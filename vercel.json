@@ -1,0 +1,5 @@
+{
+  "functions": {
+    "api/**": { "includeFiles": ["seed-db.json"] }
+  }
+}
