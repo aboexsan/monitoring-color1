@@ -883,7 +883,7 @@ function hitungNG(rec){
       rec.rows[r][m].forEach((v,a)=>{
         const b = boundsOf(rec.kode, m, a);
         if(b && !isNaN(v) && (v < b[0] || v > b[1]))
-          out.push({row:r, m, a, label:`${r} ${m.toUpperCase()}${ANGLES[a]}`});
+          out.push({row:r, m, a, label:`${r} ${({dL:'ΔL',da:'Δa',db:'Δb',dE:'ΔE'})[m]}${ANGLES[a]}`});
       });
     });
   });
@@ -1168,8 +1168,6 @@ function chartSVG(rec, m){
   const parts = Object.keys(rec.rows);
   const n = parts.length;
   const name = {dL:'\u0394L', da:'\u0394a', db:'\u0394b', dE:'\u0394E'}[m];
-  const PCOLORS = ['#1e88e5','#e53935','#43a047','#fb8c00','#8e24aa','#00897b','#d81b60','#5d4037'];
-  const pcol = p => { const k = PARTS8.indexOf(p); return PCOLORS[k>=0?k:0]; };
   const W=680, H=300, ml=52, mr=14, mt=20, mb=48;
   const iw=W-ml-mr, ih=H-mt-mb;
   let lo=Infinity, hi=-Infinity;
@@ -1195,17 +1193,18 @@ function chartSVG(rec, m){
   if(tMax!==null){ const yy=Y(tMax).toFixed(1);
     tl+=`<line x1="${ml}" x2="${W-mr}" y1="${yy}" y2="${yy}" stroke="#E11D48" stroke-width="2" stroke-dasharray="8 4"/><text x="${W-mr-3}" y="${yy-4}" font-size="8.6" font-weight="800" fill="#E11D48" text-anchor="end">\u0394E TARGET MAX ${+tMax}</text>`; }
   let series='';
-  // garis penghubung antar part per sudut (gaya Excel: garis nyambung)
+  // gaya Excel: 3 GARIS (25°/45°/75°) warna BERBEDA, menghubungkan antar part
+  const ACOLORS = ['#1e88e5','#e53935','#43a047'];   // biru 25°, merah 45°, hijau 75°
   for(let a=0;a<3;a++){
     const pts = parts.map((p,i)=>({i, v:+rec.rows[p][m][a], p}));
-    series += `<polyline points="${pts.map(pt=>`${X(pt.i).toFixed(1)},${Y(pt.v).toFixed(1)}`).join(' ')}" fill="none" stroke="#94A3B8" stroke-width="1.6" opacity=".8"/>`;
+    series += `<polyline points="${pts.map(pt=>`${X(pt.i).toFixed(1)},${Y(pt.v).toFixed(1)}`).join(' ')}" fill="none" stroke="${ACOLORS[a]}" stroke-width="2.2" opacity=".92"/>`;
     pts.forEach(pt=>{
       const b = boundsOf(rec.kode, m, a);
       const ng = b && !isNaN(pt.v) && (pt.v<b[0] || pt.v>b[1]);
       const cx=X(pt.i).toFixed(1), cy=Y(pt.v).toFixed(1);
       series += ng
         ? `<circle cx="${cx}" cy="${cy}" r="7" fill="rgba(225,29,72,.16)"/><circle cx="${cx}" cy="${cy}" r="4.4" fill="#E11D48" stroke="#fff" stroke-width="1.6"/>`
-        : `<circle cx="${cx}" cy="${cy}" r="3.6" fill="${pcol(pt.p)}" stroke="#fff" stroke-width="1.3"/>`;
+        : `<circle cx="${cx}" cy="${cy}" r="3.2" fill="${ACOLORS[a]}" stroke="#fff" stroke-width="1.2"/>`;
       series += `<text x="${cx}" y="${(+cy + (a===0?-8:12)).toFixed(1)}" font-size="8" font-weight="${ng?'800':'600'}" fill="${ng?'#E11D48':'#475569'}" text-anchor="middle">${pt.v}</text>`;
     });
   }
@@ -1216,9 +1215,10 @@ function chartSVG(rec, m){
     ${grid}${zero}${tl}${series}${xl}</svg>`;
 }
 function chartHTML(rec){
-  const PCOLORS = [['#1e88e5','Fender LH'],['#e53935','Fender RH'],['#43a047','FR Bumper LH'],['#fb8c00','FR Bumper RH'],['#8e24aa','Quarter LH'],['#00897b','Quarter RH'],['#d81b60','RR Bumper LH'],['#5d4037','RR Bumper RH']];
   const lg = `<div class="lg">
-    ${PCOLORS.map(([c,n])=>`<span><i style="background:${c}"></i>${n}</span>`).join('')}
+    <span><i style="background:#1e88e5"></i>25°</span>
+    <span><i style="background:#e53935"></i>45°</span>
+    <span><i style="background:#43a047"></i>75°</span>
     <span><i style="background:#E11D48"></i>NG</span>
     <span><i style="background:#111"></i>Target ADM</span>
   </div>`;
@@ -1248,7 +1248,7 @@ function riwayatList(unitId, fk, fb){
         <div class="inner">
           ${ukurTable(r)}
           ${chartHTML(r)}
-          ${ngs.length ? `<div class="legend-note" style="color:var(--red);font-weight:700">⚠ NG: ${ngs.map(n=>`${n.row} ${n.m.toUpperCase()}${ANGLES[n.a]}`).join(' • ')}</div>` : `<div class="legend-note" style="color:#1e6b24;font-weight:700">✓ Semua sel sesuai target ADM</div>`}
+          ${ngs.length ? `<div class="legend-note" style="color:var(--red);font-weight:700">⚠ NG: ${ngs.map(n=>n.label).join(' • ')}</div>` : `<div class="legend-note" style="color:#1e6b24;font-weight:700">✓ Semua sel sesuai target ADM</div>`}
         </div>
       </details>`;
   }).join('');
