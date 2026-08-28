@@ -1168,7 +1168,7 @@ function chartSVG(rec, m){
   const parts = Object.keys(rec.rows);
   const n = parts.length;
   const name = {dL:'\u0394L', da:'\u0394a', db:'\u0394b', dE:'\u0394E'}[m];
-  const W=680, H=300, ml=52, mr=14, mt=20, mb=48;
+  const W=680, H=312, ml=52, mr=14, mt=20, mb=56;
   const iw=W-ml-mr, ih=H-mt-mb;
   let lo=Infinity, hi=-Infinity;
   parts.forEach(p=> rec.rows[p][m].forEach(v=>{ lo=Math.min(lo,+v); hi=Math.max(hi,+v); }));
@@ -1194,7 +1194,7 @@ function chartSVG(rec, m){
     tl+=`<line x1="${ml}" x2="${W-mr}" y1="${yy}" y2="${yy}" stroke="#E11D48" stroke-width="2" stroke-dasharray="8 4"/><text x="${W-mr-3}" y="${yy-4}" font-size="8.6" font-weight="800" fill="#E11D48" text-anchor="end">\u0394E TARGET MAX ${+tMax}</text>`; }
   let series='';
   // gaya Excel: 3 GARIS (25°/45°/75°) warna BERBEDA, menghubungkan antar part
-  const ACOLORS = ['#1e88e5','#e53935','#43a047'];   // biru 25°, merah 45°, hijau 75°
+  const ACOLORS = ['#1e88e5','#F5A623','#43a047'];   // biru 25°, kuning 45°, hijau 75°
   for(let a=0;a<3;a++){
     const pts = parts.map((p,i)=>({i, v:+rec.rows[p][m][a], p}));
     series += `<polyline points="${pts.map(pt=>`${X(pt.i).toFixed(1)},${Y(pt.v).toFixed(1)}`).join(' ')}" fill="none" stroke="${ACOLORS[a]}" stroke-width="2.2" opacity=".92"/>`;
@@ -1208,7 +1208,7 @@ function chartSVG(rec, m){
       series += `<text x="${cx}" y="${(+cy + (a===0?-8:12)).toFixed(1)}" font-size="8" font-weight="${ng?'800':'600'}" fill="${ng?'#E11D48':'#475569'}" text-anchor="middle">${pt.v}</text>`;
     });
   }
-  const xl = parts.map((p,i)=>`<text transform="translate(${X(i).toFixed(1)},${H-mb+12}) rotate(-32)" font-size="8.4" fill="#64748B" text-anchor="end">${p}</text>`).join('');
+  const xl = parts.map((p,i)=>`<text transform="translate(${X(i).toFixed(1)},${H-mb+12}) rotate(-32)" font-size="9.6" fill="#1F2937" text-anchor="end" font-weight="600">${p}</text>`).join('');
   return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
     <rect x="0" y="0" width="${W}" height="${H}" rx="12" fill="#F8FAFC"/>
     <text x="${ml}" y="13" font-size="12" font-weight="800" fill="#0F172A">${name} <tspan fill="#94A3B8" font-weight="600">\u2014 Trend Color (per part)</tspan></text>
@@ -1217,7 +1217,7 @@ function chartSVG(rec, m){
 function chartHTML(rec){
   const lg = `<div class="lg">
     <span><i style="background:#1e88e5"></i>25°</span>
-    <span><i style="background:#e53935"></i>45°</span>
+    <span><i style="background:#F5A623"></i>45°</span>
     <span><i style="background:#43a047"></i>75°</span>
     <span><i style="background:#E11D48"></i>NG</span>
     <span><i style="background:#111"></i>Target ADM</span>
