@@ -13,21 +13,27 @@ const upOn = () => !!(UP_URL && UP_TOK);
 const DB_KEY = 'monitoring-color-db';
 const SESS_TTL = 7 * 24 * 3600 * 1000; // 7 hari
 
-// ---------- Upstash REST ----------
-async function upGet(key){
-  const r = await fetch(`${UP_URL}/get/${key}`, { headers: { Authorization: `Bearer ${UP_TOK}` } });
+// ---------- Upstash REST (format resmi: command JSON array) ----------
+async function upCmd(cmd){
+  const r = await fetch(UP_URL, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${UP_TOK}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(cmd)
+  });
+  if(!r.ok) throw new Error('Upstash HTTP ' + r.status);
   const j = await r.json();
-  return j.result ? JSON.parse(j.result) : null;
+  if(j.error) throw new Error('Upstash: ' + j.error);
+  return ('result' in j) ? j.result : null;
+}
+async function upGet(key){
+  const result = await upCmd(['get', key]);
+  return result ? JSON.parse(result) : null;
 }
 async function upSet(key, val){
-  await fetch(`${UP_URL}/set/${key}`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${UP_TOK}`, 'Content-Type': 'text/plain' },
-    body: JSON.stringify(val)
-  });
+  await upCmd(['set', key, JSON.stringify(val)]);
 }
 async function upDel(key){
-  await fetch(`${UP_URL}/del/${key}`, { method: 'POST', headers: { Authorization: `Bearer ${UP_TOK}` } });
+  await upCmd(['del', key]);
 }
 
 // ---------- password ----------
@@ -80,7 +86,7 @@ async function handle(method, pathname, body, cookies){
       const u = db.users.find(x => x.id.toLowerCase() === String(body.id||'').toLowerCase() && x.pass === hash(String(body.pw||''), x.salt));
       if(!u) return { status: 401, json: { error: 'ID atau password salah — cek lagi ya' } };
       const sid = await createSession(u);
-      return { status: 200, json: { user: publicUser(u), db: safeDB(db) }, setCookie: `sid=${sid}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${SESS_TTL/1000}` };
+      return { status: 200, json: { user: publicUser(u), db: safeDB(db) }, setCookie: `sid=${sid}; HttpOnly; Path=/; SameSite=Lax; Secure; Max-Age=${SESS_TTL/1000}` };
     }
 
     // ---- LOGOUT ----
