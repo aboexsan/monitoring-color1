@@ -1047,9 +1047,6 @@ function keyNav(e){
   if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(k)) return;
   const el = e.target;
   if(!el.dataset || el.dataset.m === undefined) return;
-  const pos = el.selectionStart == null ? 0 : el.selectionStart;
-  if(k==='ArrowLeft' && pos>0) return;
-  if(k==='ArrowRight' && pos < (el.value ? el.value.length : 0)) return;
   e.preventDefault();
   const all = Array.from(document.querySelectorAll('#ukurBody input'));
   const idx = all.indexOf(el);
@@ -1061,7 +1058,9 @@ function keyNav(e){
   if(k==='ArrowUp'    && idx >= COLS)            target = idx-COLS;
   if(k==='ArrowDown'  && idx < all.length-COLS)  target = idx+COLS;
   if(target>=0 && target<all.length){
-    try{ all[target].focus(); }catch(err){}
+    const nx = all[target];
+    nx.focus();
+    try{ nx.select(); }catch(err){}
   }
 }
 
