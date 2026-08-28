@@ -911,7 +911,7 @@ function renderInput(){
         <span class="fm-f"><b>Unit:</b> <select id="fmU">${uOpts}</select></span>
         <span class="fm-f"><b>No Body:</b> <input id="fmNB" type="text" placeholder="cth: 12345"></span>
       </div>
-      <div class="fm-tablewrap">
+      <div class="fm-tablewrap" onkeydown="keyNav(event)">
         <table class="fm-table">
           <thead>
             <tr><th rowspan="2" class="rowlab">PART</th>
@@ -1041,6 +1041,30 @@ function refreshNg(){
   $('#ukurBody').querySelectorAll('input').forEach(liveNg);
 }
 
+// navigasi keyboard: panah antar sel input (kiri/kanan/atas/bawah)
+function keyNav(e){
+  const k = e.key;
+  if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(k)) return;
+  const el = e.target;
+  if(!el.dataset || el.dataset.m === undefined) return;
+  const pos = el.selectionStart == null ? 0 : el.selectionStart;
+  if(k==='ArrowLeft' && pos>0) return;
+  if(k==='ArrowRight' && pos < (el.value ? el.value.length : 0)) return;
+  e.preventDefault();
+  const all = Array.from(document.querySelectorAll('#ukurBody input'));
+  const idx = all.indexOf(el);
+  if(idx<0) return;
+  const COLS = 12;
+  let target = -1;
+  if(k==='ArrowLeft'  && (idx % COLS) > 0)       target = idx-1;
+  if(k==='ArrowRight' && (idx % COLS) < COLS-1)  target = idx+1;
+  if(k==='ArrowUp'    && idx >= COLS)            target = idx-COLS;
+  if(k==='ArrowDown'  && idx < all.length-COLS)  target = idx+COLS;
+  if(target>=0 && target<all.length){
+    try{ all[target].focus(); }catch(err){}
+  }
+}
+
 function renderUkurRows(){
   $('#ukurBody').innerHTML = PARTS8.map((r,i)=>`
     <tr>
@@ -1115,16 +1139,28 @@ function fmtTgl(iso){
   return isNaN(d) ? iso : d.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});
 }
 
+const METRIC_COLORS = ['\u0394L','#8bc34a','\u0394a','#e91e63','\u0394b','#2196f3','\u0394E','#ff9800'];
 function ukurTable(rec){
-  return `<table><thead>
-    <tr><th rowspan="2" style="text-align:left;padding-left:10px">Part</th>${METRICS.map(([m,l])=>`<th colspan="3">${l}</th>`).join('')}</tr>
-    <tr>${METRICS.map(()=>ANGLES.map(a=>`<th style="font-weight:600">${a}</th>`).join('')).join('')}</tr>
+  return `<table class="ukt"><thead>
+    <tr><th rowspan="2" class="ukt-lab">ARIA CHECK</th>
+      ${[0,2,4,6].map(ix=>`<th colspan="3" class="ukt-metric" style="background:${METRIC_COLORS[ix+1]}">${METRIC_COLORS[ix]}</th>`).join('')}</tr>
+    <tr>${[0,2,4,6].map(()=>ANGLES.map(a=>`<th class="ukt-ang">${ANGLES[a]}</th>`).join('')).join('')}</tr>
   </thead><tbody>
-    ${Object.entries(rec.rows).map(([r,v])=>`<tr><th class="rowlab">${esc(r)}</th>${METRICS.map(([m])=>v[m].map((x,a)=>{
+    ${Object.entries(rec.rows).map(([r,v])=>`<tr><th class="ukt-part">${esc(r)}</th>${METRICS.map(([m])=>v[m].map((x,a)=>{
         const b = boundsOf(rec.kode, m, a);
         const cls = (b && !isNaN(x) && (x<b[0]||x>b[1])) ? 'c-ng' : (b ? 'c-ok' : '');
         return `<td class="${cls}">${x}</td>`;
       }).join('')).join('')}</tr>`).join('')}
+    <tr class="ukt-target"><td class="ukt-part">TARGET UPPER</td>${METRICS.map(([m])=>{
+        if(m==='dE') return `<td colspan="3">${DE_MAX.toFixed(1)}</td>`;
+        const b = boundsOf(rec.kode, m, 0);
+        return [0,1,2].map(()=>`<td>${b?b[1]:'\u2014'}</td>`).join('');
+      }).join('')}</tr>
+    <tr class="ukt-target"><td class="ukt-part">TARGET LOWER</td>${METRICS.map(([m])=>{
+        if(m==='dE') return `<td colspan="3">\u2014</td>`;
+        const b = boundsOf(rec.kode, m, 0);
+        return [0,1,2].map(()=>`<td>${b?b[0]:'\u2014'}</td>`).join('');
+      }).join('')}</tr>
   </tbody></table>`;
 }
 
@@ -1132,10 +1168,10 @@ function ukurTable(rec){
 function chartSVG(rec, m){
   const parts = Object.keys(rec.rows);
   const n = parts.length;
-  const name = {dL:'ΔL', da:'Δa', db:'Δb', dE:'ΔE'}[m];
-  const scolors = ['#2563EB','#F97316','#94A3B8'];   // biru, oranye, slate
-  const gid = 'g' + m + Math.random().toString(36).slice(2,7);
-  const W=680, H=266, ml=52, mr=14, mt=20, mb=50;
+  const name = {dL:'\u0394L', da:'\u0394a', db:'\u0394b', dE:'\u0394E'}[m];
+  const PCOLORS = ['#1e88e5','#e53935','#43a047','#fb8c00','#8e24aa','#00897b','#d81b60','#5d4037'];
+  const pcol = p => { const k = PARTS8.indexOf(p); return PCOLORS[k>=0?k:0]; };
+  const W=680, H=300, ml=52, mr=14, mt=20, mb=48;
   const iw=W-ml-mr, ih=H-mt-mb;
   let lo=Infinity, hi=-Infinity;
   parts.forEach(p=> rec.rows[p][m].forEach(v=>{ lo=Math.min(lo,+v); hi=Math.max(hi,+v); }));
@@ -1145,7 +1181,6 @@ function chartSVG(rec, m){
   const span=(hi-lo)||1; lo-=span*0.16; hi+=span*0.16;
   const X=i=> ml + (n===1? iw/2 : i*(iw/(n-1)));
   const Y=v=> mt + ih - (v-lo)/(hi-lo)*ih;
-  // grid modern: garis tipis + label rapi
   let grid='';
   for(let g=0; g<=4; g++){
     const v=lo+(hi-lo)*g/4, yy=Y(v).toFixed(1);
@@ -1153,56 +1188,38 @@ function chartSVG(rec, m){
   }
   const y0v = Math.max(lo, Math.min(hi, 0));
   const zero = `<line x1="${ml}" x2="${W-mr}" y1="${Y(y0v).toFixed(1)}" y2="${Y(y0v).toFixed(1)}" stroke="#CBD5E1" stroke-width="1.2"/>`;
-  // zona target diarsir + garis target
-  let zone='', tl='';
-  if(tUp!==null && tUp<=hi && tLo!==null && tLo>=lo){
-    const yu=Y(tUp).toFixed(1), yl=Y(tLo).toFixed(1);
-    zone=`<rect x="${ml}" y="${yu}" width="${iw}" height="${(+yl-+yu).toFixed(1)}" fill="url(#${gid})"/>`;
-    tl+=`<line x1="${ml}" x2="${W-mr}" y1="${yu}" y2="${yu}" stroke="#16A34A" stroke-width="1.6" stroke-dasharray="7 4"/><text x="${W-mr-3}" y="${yu-4}" font-size="8.6" font-weight="800" fill="#16A34A" text-anchor="end">TARGET UPPER ${+tUp}</text>`;
-    tl+=`<line x1="${ml}" x2="${W-mr}" y1="${yl}" y2="${yl}" stroke="#16A34A" stroke-width="1.6" stroke-dasharray="7 4"/><text x="${W-mr-3}" y="${+yl+11}" font-size="8.6" font-weight="800" fill="#16A34A" text-anchor="end">TARGET LOWER ${+tLo}</text>`;
-  } else {
-    if(tUp!==null && tUp<=hi){ const yy=Y(tUp).toFixed(1);
-      tl+=`<line x1="${ml}" x2="${W-mr}" y1="${yy}" y2="${yy}" stroke="#16A34A" stroke-width="1.6" stroke-dasharray="7 4"/><text x="${W-mr-3}" y="${yy-4}" font-size="8.6" font-weight="800" fill="#16A34A" text-anchor="end">TARGET UPPER ${+tUp}</text>`; }
-    if(tLo!==null && tLo>=lo){ const yy=Y(tLo).toFixed(1);
-      tl+=`<line x1="${ml}" x2="${W-mr}" y1="${yy}" y2="${yy}" stroke="#16A34A" stroke-width="1.6" stroke-dasharray="7 4"/><text x="${W-mr-3}" y="${+yl+11}" font-size="8.6" font-weight="800" fill="#16A34A" text-anchor="end">TARGET LOWER ${+tLo}</text>`; }
-  }
+  let tl='';
+  if(tUp!==null && tUp<=hi){ const yy=Y(tUp).toFixed(1);
+    tl+=`<line x1="${ml}" x2="${W-mr}" y1="${yy}" y2="${yy}" stroke="#111" stroke-width="2" stroke-dasharray="7 4"/><text x="${W-mr-3}" y="${yy-4}" font-size="8.6" font-weight="800" fill="#111" text-anchor="end">TARGET UPPER ${+tUp}</text>`; }
+  if(tLo!==null && tLo>=lo){ const yy=Y(tLo).toFixed(1);
+    tl+=`<line x1="${ml}" x2="${W-mr}" y1="${yy}" y2="${yy}" stroke="#111" stroke-width="2" stroke-dasharray="7 4"/><text x="${W-mr-3}" y="${+yy+11}" font-size="8.6" font-weight="800" fill="#111" text-anchor="end">TARGET LOWER ${+tLo}</text>`; }
   if(tMax!==null){ const yy=Y(tMax).toFixed(1);
-    tl+=`<line x1="${ml}" x2="${W-mr}" y1="${yy}" y2="${yy}" stroke="#E11D48" stroke-width="1.8" stroke-dasharray="8 4"/><text x="${W-mr-3}" y="${yy-4}" font-size="8.6" font-weight="800" fill="#E11D48" text-anchor="end">ΔE TARGET MAX ${+tMax}</text>`; }
-  // series: garis gradien tipis + titik glow + NG merah menyala
-  let defs=`<defs>
-    <linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#22C55E" stop-opacity=".10"/><stop offset="1" stop-color="#22C55E" stop-opacity=".03"/>
-    </linearGradient>
-  </defs>`;
+    tl+=`<line x1="${ml}" x2="${W-mr}" y1="${yy}" y2="${yy}" stroke="#E11D48" stroke-width="2" stroke-dasharray="8 4"/><text x="${W-mr-3}" y="${yy-4}" font-size="8.6" font-weight="800" fill="#E11D48" text-anchor="end">\u0394E TARGET MAX ${+tMax}</text>`; }
   let series='';
-  const dy=[-9, 14, 14];
   for(let a=0;a<3;a++){
-    const pts = parts.map((p,i)=>({i, v:+rec.rows[p][m][a]}));
-    series += `<polyline points="${pts.map(pt=>`${X(pt.i).toFixed(1)},${Y(pt.v).toFixed(1)}`).join(' ')}" fill="none" stroke="${scolors[a]}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" opacity=".95"/>`;
+    const pts = parts.map((p,i)=>({i, v:+rec.rows[p][m][a], p}));
     pts.forEach(pt=>{
       const b = boundsOf(rec.kode, m, a);
       const ng = b && !isNaN(pt.v) && (pt.v<b[0] || pt.v>b[1]);
       const cx=X(pt.i).toFixed(1), cy=Y(pt.v).toFixed(1);
       series += ng
-        ? `<circle cx="${cx}" cy="${cy}" r="7" fill="rgba(225,29,72,.18)"/><circle cx="${cx}" cy="${cy}" r="4.6" fill="#E11D48" stroke="#fff" stroke-width="1.6"/>`
-        : `<circle cx="${cx}" cy="${cy}" r="3.4" fill="${scolors[a]}" stroke="#fff" stroke-width="1.4"/>`;
-      series += `<text x="${cx}" y="${(+cy+dy[a]).toFixed(1)}" font-size="8" font-weight="${ng?'800':'600'}" fill="${ng?'#E11D48':'#64748B'}" text-anchor="middle">${pt.v}</text>`;
+        ? `<circle cx="${cx}" cy="${cy}" r="7" fill="rgba(225,29,72,.16)"/><circle cx="${cx}" cy="${cy}" r="4.4" fill="#E11D48" stroke="#fff" stroke-width="1.6"/>`
+        : `<circle cx="${cx}" cy="${cy}" r="3.6" fill="${pcol(pt.p)}" stroke="#fff" stroke-width="1.3"/>`;
+      series += `<text x="${cx}" y="${(+cy + (a===0?-8:12)).toFixed(1)}" font-size="8" font-weight="${ng?'800':'600'}" fill="${ng?'#E11D48':'#475569'}" text-anchor="middle">${pt.v}</text>`;
     });
   }
   const xl = parts.map((p,i)=>`<text transform="translate(${X(i).toFixed(1)},${H-mb+12}) rotate(-32)" font-size="8.4" fill="#64748B" text-anchor="end">${p}</text>`).join('');
-  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${defs}
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
     <rect x="0" y="0" width="${W}" height="${H}" rx="12" fill="#F8FAFC"/>
-    <rect x="0" y="0" width="${W}" height="4" rx="2" fill="url(#topbar-${m})" opacity="0"/>
-    <text x="${ml}" y="13" font-size="12" font-weight="800" fill="#0F172A">${name} <tspan fill="#94A3B8" font-weight="600">— vs Target ADM</tspan></text>
-    ${grid}${zone}${zero}${tl}${series}${xl}</svg>`;
+    <text x="${ml}" y="13" font-size="12" font-weight="800" fill="#0F172A">${name} <tspan fill="#94A3B8" font-weight="600">\u2014 Trend Color (per part)</tspan></text>
+    ${grid}${zero}${tl}${series}${xl}</svg>`;
 }
 function chartHTML(rec){
+  const PCOLORS = [['#1e88e5','Fender LH'],['#e53935','Fender RH'],['#43a047','FR Bumper LH'],['#fb8c00','FR Bumper RH'],['#8e24aa','Quarter LH'],['#00897b','Quarter RH'],['#d81b60','RR Bumper LH'],['#5d4037','RR Bumper RH']];
   const lg = `<div class="lg">
-    <span><i style="background:#2563EB"></i>25°</span>
-    <span><i style="background:#F97316"></i>45°</span>
-    <span><i style="background:#94A3B8"></i>75°</span>
-    <span><i style="background:#16A34A"></i>Zona target ADM</span>
-    <span><i style="background:#E11D48"></i>NG / ΔE max</span>
+    ${PCOLORS.map(([c,n])=>`<span><i style="background:${c}"></i>${n}</span>`).join('')}
+    <span><i style="background:#E11D48"></i>NG</span>
+    <span><i style="background:#111"></i>Target ADM</span>
   </div>`;
   return `<div class="chart-grid">${METRICS.map(([m,l])=>`<div class="chart-cell">${chartSVG(rec,m)}${lg}</div>`).join('')}</div>`;
 }
