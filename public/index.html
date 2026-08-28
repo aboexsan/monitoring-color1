@@ -1143,7 +1143,7 @@ function ukurTable(rec){
   return `<table class="ukt"><thead>
     <tr><th rowspan="2" class="ukt-lab">ARIA CHECK</th>
       ${[0,2,4,6].map(ix=>`<th colspan="3" class="ukt-metric" style="background:${METRIC_COLORS[ix+1]}">${METRIC_COLORS[ix]}</th>`).join('')}</tr>
-    <tr>${[0,2,4,6].map(()=>ANGLES.map(a=>`<th class="ukt-ang">${ANGLES[a]}</th>`).join('')).join('')}</tr>
+    <tr>${[0,2,4,6].map(()=>ANGLES.map((_,ai)=>`<th class="ukt-ang">${ANGLES[ai]}</th>`).join('')).join('')}</tr>
   </thead><tbody>
     ${Object.entries(rec.rows).map(([r,v])=>`<tr><th class="ukt-part">${esc(r)}</th>${METRICS.map(([m])=>v[m].map((x,a)=>{
         const b = boundsOf(rec.kode, m, a);
@@ -1195,8 +1195,10 @@ function chartSVG(rec, m){
   if(tMax!==null){ const yy=Y(tMax).toFixed(1);
     tl+=`<line x1="${ml}" x2="${W-mr}" y1="${yy}" y2="${yy}" stroke="#E11D48" stroke-width="2" stroke-dasharray="8 4"/><text x="${W-mr-3}" y="${yy-4}" font-size="8.6" font-weight="800" fill="#E11D48" text-anchor="end">\u0394E TARGET MAX ${+tMax}</text>`; }
   let series='';
+  // garis penghubung antar part per sudut (gaya Excel: garis nyambung)
   for(let a=0;a<3;a++){
     const pts = parts.map((p,i)=>({i, v:+rec.rows[p][m][a], p}));
+    series += `<polyline points="${pts.map(pt=>`${X(pt.i).toFixed(1)},${Y(pt.v).toFixed(1)}`).join(' ')}" fill="none" stroke="#94A3B8" stroke-width="1.6" opacity=".8"/>`;
     pts.forEach(pt=>{
       const b = boundsOf(rec.kode, m, a);
       const ng = b && !isNaN(pt.v) && (pt.v<b[0] || pt.v>b[1]);
@@ -1238,7 +1240,7 @@ function riwayatList(unitId, fk, fb){
       <details class="ukur"${openAttr}>
         <summary>
           📅 <b>${fmtTgl(r.tanggal)}</b> • warna <b>${esc(r.kode)}</b> • ${esc(r.area||'FULL')} • No.Body ${esc(r.noBody||'-')} •
-          ΔE max <b class="${r.maxDE<=DE_MAX?'de-ok':'de-bad'}">${r.maxDE.toFixed(2)}</b> •
+          ΔE max <b class="${r.maxDE<=DE_MAX?'de-ok':'de-bad'}">${(r.maxDE ?? Math.max(...Object.values(r.rows).flatMap(v=>v.dE))).toFixed(2)}</b> •
           <b class="${ngs.length?'de-bad':'de-ok'}">${ngs.length ? '⚠ '+ngs.length+' sel NG' : 'Checked ✓'}</b> • ${esc(r.shift)}
           <span style="margin-left:auto;font-size:11px;color:#8a988c">📊 tabel + 4 grafik</span>
           ${isAdmin()?`<button class="mini danger delbtn" onclick="event.preventDefault();delUkur('${r.id}')">🗑 Hapus</button>`:''}
@@ -1246,7 +1248,7 @@ function riwayatList(unitId, fk, fb){
         <div class="inner">
           ${ukurTable(r)}
           ${chartHTML(r)}
-          <div class="legend-note">Garis merah = target upper/lower ADM warna ${esc(r.kode)} (berlaku utk 25°/45°/75°) • garis kuning putus = batas ΔE • titik &amp; angka merah = NG. Part body + bumper tampil sekalian.</div>
+          ${ngs.length ? `<div class="legend-note" style="color:var(--red);font-weight:700">⚠ NG: ${ngs.map(n=>`${n.row} ${n.m.toUpperCase()}${ANGLES[n.a]}`).join(' • ')}</div>` : `<div class="legend-note" style="color:#1e6b24;font-weight:700">✓ Semua sel sesuai target ADM</div>`}
         </div>
       </details>`;
   }).join('');
