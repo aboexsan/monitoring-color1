@@ -251,20 +251,9 @@
   .fm-table td input.inp-ng{border-color:var(--red);background:var(--red-soft);color:var(--red);font-weight:800;}
   .std-panel{display:flex;gap:14px;align-items:stretch;padding:14px 18px;border-top:1px dashed var(--line);flex-wrap:wrap;background:#fbfcfb;}
   .std-swatch{
-    width:150px; min-height:118px; border-radius:12px; border:1px solid rgba(0,0,0,.12);
-    display:flex; align-items:flex-end; overflow:hidden; position:relative; flex-shrink:0;
+    width:240px; min-height:150px; border-radius:12px; border:1px solid rgba(0,0,0,.12);
+    display:flex; align-items:flex-end; overflow:hidden; position:relative;
   }
-  .std-panel-info{flex:1; min-width:230px;}
-  .std-panel-info h4{font-size:13px; margin-bottom:2px;}
-  .std-panel-info .sub{font-size:11px; color:#5a6570; margin-bottom:8px;}
-  .std-target-table{border-collapse:collapse; width:100%; max-width:420px;}
-  .std-target-table th,.std-target-table td{
-    border:1px solid #dfe5df; padding:4px 10px; text-align:center;
-    font-size:12px; background:#fff;
-  }
-  .std-target-table th{background:var(--brand); color:#fff; font-weight:800;}
-  .std-target-table td:first-child{font-weight:800; background:#f3f6f3; width:46px;}
-  .std-target-table .e-row td{background:#fdf6e6; font-weight:800; color:#8a5a00;}
   .fm-foot{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:14px 18px;background:#f7f8f9;border-top:1px solid var(--line);flex-wrap:wrap;}
   .fm-note{font-size:12px;color:#5a6570;}
   .btn-teal{background:#1cc3c9;color:#fff;border:none;border-radius:9px;padding:12px 34px;font-size:14px;font-weight:800;letter-spacing:.5px;box-shadow:0 3px 10px rgba(28,195,201,.35);cursor:pointer;}
@@ -1035,18 +1024,6 @@ function renderStdPanel(){
           <tr><td class="swt-l">ΔE</td><td colspan="3" class="swt-e">max 2.0</td></tr>
         </table>
       </div>
-    </div>
-    <div class="std-panel-info">
-      <h4>Standard ADM warna <b>${esc(kode)}</b> <span class="dot" style="display:inline-block;vertical-align:-2px;background:${esc(meta.hex)}"></span></h4>
-      <div class="sub">Patokan penilaian sel pengukuran — target sama untuk sudut 25°, 45°, dan 75°. Sel di tabel atas otomatis merah bila keluar dari angka ini.</div>
-      <table class="std-target-table">
-        <tr><th></th><th>25°</th><th>45°</th><th>75°</th></tr>
-        ${['dL','da','db'].map(k=>{
-          const lb = {dL:'ΔL',da:'Δa',db:'Δb'}[k];
-          return `<tr><td>${lb}</td>${[0,1,2].map(a=>`<td>${rg(t[k][a])}</td>`).join('')}</tr>`;
-        }).join('')}
-        <tr class="e-row"><td>ΔE</td><td colspan="3">max 2.0 (semua sudut)</td></tr>
-      </table>
     </div>`;
 }
 
