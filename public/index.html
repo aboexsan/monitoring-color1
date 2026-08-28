@@ -351,7 +351,13 @@
   .lg-err.show{display:block;}
   .lg-btn{width:100%;background:var(--brand);color:#fff;border:none;border-radius:10px;padding:12px;font-size:14.5px;font-weight:800;cursor:pointer;box-shadow:0 3px 10px rgba(13,59,102,.3);}
   .lg-btn:hover{background:var(--brand-dark);}
-  .lg-hint{margin-top:18px;font-size:10.5px;color:var(--ink-3);line-height:1.7;text-align:left;background:#f7f8f9;border-radius:10px;padding:9px 12px;}
+  .lg-wa{
+    margin-top:14px; display:flex; align-items:center; justify-content:center; gap:8px;
+    text-decoration:none; border:1px solid #cfe8d6; background:#f2fbf5; color:#1e7e3c;
+    border-radius:10px; padding:9px 12px; font-size:12.5px; font-weight:700;
+  }
+  .lg-wa:hover{background:#e6f7ec;}
+  .lg-wa svg{width:16px; height:16px; flex-shrink:0;}
 
   /* ============ USERBOX ============ */
   .userbox{margin-left:auto;display:flex;align-items:center;gap:9px;}
@@ -393,7 +399,7 @@
 
 <main id="app"></main>
 
-<footer>Monitoring Color — PT Astra Daihatsu Motor • Quality Engineering • KAP<br>Klik salah satu unit untuk melihat &amp; mengubah data warnanya.</footer>
+<footer>Monitoring Color — PT Astra Daihatsu Motor • Quality Engineering • KAP<br>Dibuat &amp; dikembangkan oleh Abu Ikhsan</footer>
 
 <!-- ============ MODAL FORM WARNA ============ -->
 <div id="modalWrap" class="modal-wrap" onclick="if(event.target===this)closeModal()">
@@ -595,7 +601,6 @@ function renderLogin(){
         <div class="lc1">PT ASTRA DAIHATSU MOTOR</div>
         <div class="lc2">QUALITY ENGINEERING • KAP</div>
         <h1>Monitoring Color</h1>
-        <p>Monitoring warna unit mobil — silakan masuk</p>
         <div id="lgErr" class="lg-err"></div>
         <div class="lg-field">
           <label>ID User</label>
@@ -606,11 +611,12 @@ function renderLogin(){
           <input type="password" id="lgPw" placeholder="••••••" autocomplete="current-password">
         </div>
         <button class="lg-btn" onclick="doLogin()">Masuk</button>
-        <div class="lg-hint">
-          <b>Akun tersedia:</b><br>
-          • QE1 — Admin utama (edit penuh)<br>
-          • Tosso1 / Tosso2 / QSS — Operator (input data saja)
-        </div>
+        <a class="lg-wa" href="https://wa.me/6282122598111?text=${encodeURIComponent('Halo, saya butuh bantuan akses aplikasi Monitoring Color')}" target="_blank" rel="noopener">
+          <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M16.004 3.2c-7.06 0-12.8 5.74-12.8 12.8 0 2.26.6 4.46 1.72 6.4L3.2 28.8l6.58-1.72a12.74 12.74 0 0 0 6.22 1.6h.004c7.06 0 12.8-5.74 12.8-12.8s-5.74-12.8-12.8-12.8zm0 23.32h-.004c-1.86 0-3.68-.5-5.26-1.44l-.38-.22-3.9 1.02 1.04-3.8-.24-.4a10.6 10.6 0 0 1-1.62-5.68c0-5.86 4.77-10.62 10.64-10.62 2.84 0 5.5 1.1 7.5 3.12a10.55 10.55 0 0 1 3.12 7.5c0 5.86-4.77 10.52-10.9 10.52zm5.83-7.9c-.32-.16-1.98-.98-2.29-1.09-.31-.11-.53-.17-.75.16-.22.32-.87 1.09-1.07 1.31-.2.22-.39.24-.71.08-.32-.16-1.35-.5-2.57-1.59-.95-.85-1.59-1.9-1.78-2.22-.19-.32-.02-.5.14-.66.14-.14.32-.37.48-.56.16-.19.21-.32.32-.53.11-.22.05-.4-.03-.56-.08-.16-.72-1.82-.99-2.49-.26-.65-.53-.56-.72-.57h-.64c-.22 0-.58.08-.88.4-.3.32-1.15 1.12-1.15 2.74s1.18 3.18 1.34 3.4c.16.22 2.3 3.52 5.58 4.93.78.34 1.39.54 1.86.69.79.25 1.5.21 2.07.13.63-.09 2.13-.87 2.43-1.71.3-.84.3-1.56.21-1.71-.08-.15-.3-.24-.62-.4z" fill="#25D366"/>
+          </svg>
+          For more information
+        </a>
       </div>
     </div>`;
   setTimeout(()=>{ const el=$('#lgId'); if(el) el.focus(); }, 50);
