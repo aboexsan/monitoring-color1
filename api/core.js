@@ -7,8 +7,8 @@ const fs = require('fs');
 const path = require('path');
 const L = require('../logic.js');
 
-const UP_URL = process.env.UPSTASH_REDIS_REST_URL;
-const UP_TOK = process.env.UPSTASH_REDIS_REST_TOKEN;
+const UP_URL = (process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL || process.env.REDIS_REST_URL || '').trim().replace(/\/$/, '');
+const UP_TOK = (process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN || process.env.REDIS_REST_TOKEN || '').trim();
 const upOn = () => !!(UP_URL && UP_TOK);
 const DB_KEY = 'monitoring-color-db';
 const SESS_TTL = 7 * 24 * 3600 * 1000; // 7 hari
@@ -20,6 +20,7 @@ async function upCmd(cmd){
     headers: { Authorization: `Bearer ${UP_TOK}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(cmd)
   });
+  if(r.status === 401) throw new Error('Upstash menolak token (401) — UPSTASH_REDIS_REST_URL / TOKEN di Vercel kemungkinan salah paste. Cek ulang & jangan sampai terbalik.');
   if(!r.ok) throw new Error('Upstash HTTP ' + r.status);
   const j = await r.json();
   if(j.error) throw new Error('Upstash: ' + j.error);
@@ -93,6 +94,17 @@ async function handle(method, pathname, body, cookies){
     if(method === 'POST' && pathname === '/api/logout'){
       if(cookies.sid) await upDel('sess:' + cookies.sid);
       return { status: 200, json: { ok: true }, setCookie: 'sid=; HttpOnly; Path=/; Max-Age=0' };
+    }
+
+    // ---- PING (diagnosa koneksi Upstash) ----
+    if(method === 'GET' && pathname === '/api/ping'){
+      if(!upOn()) return { status: 500, json: { ok:false, error:'Env UPSTASH belum terpasang di Vercel (Environment Variables)' } };
+      try{
+        const res = await upCmd(['ping']);
+        return { status: 200, json: { ok:true, ping: res, url: UP_URL.slice(0, 28) + '…' } };
+      }catch(e){
+        return { status: 500, json: { ok:false, error: e.message } };
+      }
     }
 
     // ---- BOOTSTRAP ----
