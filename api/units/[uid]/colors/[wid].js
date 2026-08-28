@@ -16,8 +16,7 @@ module.exports = async (req, res) => {
   const q = req.query || {};
   const uid = q.uid || '';
   const wid = q.wid || '';
-  const pathname = '/api/units/' + uid + '/colors/' + wid;
-  const out = await handle(req.method, pathname, body, cookies);
+  const out = await handle(req.method, '/api/units/' + uid + '/colors/' + wid, body, cookies);
   if(out.setCookie) res.setHeader('Set-Cookie', out.setCookie);
   res.status(out.status).json(out.json);
 };

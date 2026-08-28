@@ -13,10 +13,8 @@ module.exports = async (req, res) => {
     const i = kv.indexOf('=');
     if(i > 0) cookies[kv.slice(0, i).trim()] = kv.slice(i + 1).trim();
   });
-  const q = req.query || {};
-  const uid = q.uid || '';
-  const pathname = '/api/units/' + uid + '/colors';
-  const out = await handle(req.method, pathname, body, cookies);
+  const uid = (req.query && req.query.uid) || '';
+  const out = await handle(req.method, '/api/units/' + uid + '/colors', body, cookies);
   if(out.setCookie) res.setHeader('Set-Cookie', out.setCookie);
   res.status(out.status).json(out.json);
 };

@@ -42,7 +42,14 @@ function hash(pw, salt){ return crypto.createHash('sha256').update(salt + ':' + 
 
 // ---------- database default ----------
 function defaultDB(){
-  const seed = JSON.parse(fs.readFileSync(path.join(__dirname, 'seed-db.json'), 'utf8'));
+  const candidates = [
+    path.join(__dirname, 'seed-db.json'),
+    path.join(__dirname, '../seed-db.json'),
+    path.join(__dirname, '../../seed-db.json'),
+    path.join(__dirname, '../../../seed-db.json')
+  ];
+  const seedPath = candidates.find(p => fs.existsSync(p)) || candidates[0];
+  const seed = JSON.parse(fs.readFileSync(seedPath, 'utf8'));
   return {
     users: [
       {id:'QE1',    label:'Admin Utama',    role:'admin',    salt:'s1', pass: hash('qe1','s1')},

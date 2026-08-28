@@ -1,4 +1,5 @@
-const { handle } = require('../core.js');
+const { handle } = require('./core.js');
+const PATH = '/api/ping';
 module.exports = async (req, res) => {
   let body = {};
   if(req.method !== 'GET' && req.method !== 'DELETE'){
@@ -13,8 +14,7 @@ module.exports = async (req, res) => {
     const i = kv.indexOf('=');
     if(i > 0) cookies[kv.slice(0, i).trim()] = kv.slice(i + 1).trim();
   });
-  const id = (req.query && (req.query.id || req.query.wid || req.query.uid)) || '';
-  const out = await handle(req.method, '/api/measurements/' + id, body, cookies);
+  const out = await handle(req.method, PATH, body, cookies);
   if(out.setCookie) res.setHeader('Set-Cookie', out.setCookie);
   res.status(out.status).json(out.json);
 };
