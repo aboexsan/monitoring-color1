@@ -276,7 +276,7 @@
   .ukur .delbtn{margin-left:auto;}
   .ukt{border-collapse:collapse;width:100%;min-width:780px;font-size:11.5px;}
   .ukt th,.ukt td{border:1px solid #b7c2b7;padding:4px 6px;text-align:center;}
-  .ukt-lab{background:#3d4b3d;color:#ffffff;font-weight:800;text-align:left;padding-left:12px!important;white-space:nowrap;letter-spacing:1px;}
+  .ukt-lab{background:#eef1ee;color:#1f2a20;font-weight:800;text-align:left;padding-left:12px!important;white-space:nowrap;letter-spacing:1px;border-bottom:2px solid #9aa89a;}
   .ukt-metric{color:#fff;font-weight:800;font-size:12px;letter-spacing:.5px;}
   .ukt-ang{background:#f2f4ee;color:#1f2a20;font-weight:700;font-size:10px;}
   .ukt-part{background:#eef2ea;color:#1f2a20;font-weight:700;text-align:left;padding-left:12px!important;white-space:nowrap;text-transform:uppercase;}
@@ -1204,9 +1204,9 @@ function chartSVG(rec, m){
   const zero = `<line x1="${ml}" x2="${W-mr}" y1="${Y(y0v).toFixed(1)}" y2="${Y(y0v).toFixed(1)}" stroke="#CBD5E1" stroke-width="1.2"/>`;
   let tl='';
   if(tUp!==null && tUp<=hi){ const yy=Y(tUp).toFixed(1);
-    tl+=`<line x1="${ml}" x2="${W-mr}" y1="${yy}" y2="${yy}" stroke="#1565C0" stroke-width="2" stroke-dasharray="7 4"/><text x="${W-mr-3}" y="${yy-4}" font-size="8.6" font-weight="800" fill="#1565C0" text-anchor="end">TARGET MAX UPPER ( + ) ${+tUp}</text>`; }
+    tl+=`<line x1="${ml}" x2="${W-mr}" y1="${yy}" y2="${yy}" stroke="#ff9800" stroke-width="2" stroke-dasharray="7 4"/><text x="${W-mr-3}" y="${yy-4}" font-size="8.6" font-weight="800" fill="#b35c00" text-anchor="end">TARGET MAX UPPER ( + ) ${+tUp}</text>`; }
   if(tLo!==null && tLo>=lo){ const yy=Y(tLo).toFixed(1);
-    tl+=`<line x1="${ml}" x2="${W-mr}" y1="${yy}" y2="${yy}" stroke="#1565C0" stroke-width="2" stroke-dasharray="7 4"/><text x="${W-mr-3}" y="${+yy+11}" font-size="8.6" font-weight="800" fill="#1565C0" text-anchor="end">TARGET MAX LOWER ( - ) ${+tLo}</text>`; }
+    tl+=`<line x1="${ml}" x2="${W-mr}" y1="${yy}" y2="${yy}" stroke="#ff9800" stroke-width="2" stroke-dasharray="7 4"/><text x="${W-mr-3}" y="${+yy+11}" font-size="8.6" font-weight="800" fill="#b35c00" text-anchor="end">TARGET MAX LOWER ( - ) ${+tLo}</text>`; }
   if(tMax!==null){ const yy=Y(tMax).toFixed(1);
     tl+=`<line x1="${ml}" x2="${W-mr}" y1="${yy}" y2="${yy}" stroke="#E11D48" stroke-width="2" stroke-dasharray="8 4"/><text x="${W-mr-3}" y="${yy-4}" font-size="8.6" font-weight="800" fill="#E11D48" text-anchor="end">\u0394E TARGET MAX ${+tMax}</text>`; }
   let series='';
@@ -1228,7 +1228,7 @@ function chartSVG(rec, m){
   const xl = parts.map((p,i)=>`<text transform="translate(${X(i).toFixed(1)},${H-mb+12}) rotate(-32)" font-size="9.6" fill="#1F2937" text-anchor="end" font-weight="600">${p}</text>`).join('');
   return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
     <rect x="0" y="0" width="${W}" height="${H}" rx="12" fill="#F8FAFC"/>
-    <text x="${ml}" y="13" font-size="12" font-weight="800" fill="#0F172A">${name} <tspan fill="#94A3B8" font-weight="600">\u2014 Trend Color (per part)</tspan></text>
+    <text x="${ml}" y="13" font-size="12" font-weight="800" fill="#0F172A">${name} <tspan fill="#94A3B8" font-weight="600">\u2014 Trend Color (per area)</tspan></text>
     ${grid}${zero}${tl}${series}${xl}</svg>`;
 }
 function chartHTML(rec){
@@ -1237,7 +1237,7 @@ function chartHTML(rec){
     <span><i style="background:#F5A623"></i>45°</span>
     <span><i style="background:#43a047"></i>75°</span>
     <span><i style="background:#E11D48"></i>NG</span>
-    <span><i style="background:#111"></i>Target ADM</span>
+    <span><i style="background:#ff9800"></i>Target Max</span>
   </div>`;
   return `<div class="chart-grid">${METRICS.map(([m,l])=>`<div class="chart-cell">${chartSVG(rec,m)}${lg}</div>`).join('')}</div>`;
 }
