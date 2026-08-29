@@ -274,16 +274,20 @@
   .ukur .rowlab{text-align:left;font-weight:700;background:#f3f5f6;white-space:nowrap;}
   .ukur .inner{padding:10px 14px 14px;overflow-x:auto;}
   .ukur .delbtn{margin-left:auto;}
-  .ukt{border-collapse:collapse;width:100%;min-width:780px;font-size:11.5px;border-top:1px solid #d7ded7;}
-  .ukt th,.ukt td{border:1px solid #d7ded7;padding:4px 6px;text-align:center;}
-  .ukt thead tr:first-child th{border-top:1px solid #e3e9e3;}
-  .ukt-lab{background:#3d4b3d;color:#fff;font-weight:800;text-align:left;padding-left:10px!important;white-space:nowrap;}
+  .ukt{border-collapse:collapse;width:100%;min-width:780px;font-size:11.5px;}
+  .ukt th,.ukt td{border:1px solid #b7c2b7;padding:4px 6px;text-align:center;}
+  .ukt-lab{background:#3d4b3d;color:#ffffff;font-weight:800;text-align:left;padding-left:12px!important;white-space:nowrap;letter-spacing:1px;}
   .ukt-metric{color:#fff;font-weight:800;font-size:12px;letter-spacing:.5px;}
-  .ukt-ang{background:#f2f4ee;font-weight:700;font-size:10px;}
-  .ukt-part{background:#eef2ea;font-weight:700;text-align:left;padding-left:10px!important;white-space:nowrap;text-transform:uppercase;}
-  .ukt-target td{background:#e7f3e8;color:#1e6b24;}
-  .ukt-target .ukt-part{background:#e7f3e8;color:#1e6b24;}
-  .ukur .inner .ukt thead th{border-top-color:#e3e9e3;}
+  .ukt-ang{background:#f2f4ee;color:#1f2a20;font-weight:700;font-size:10px;}
+  .ukt-part{background:#eef2ea;color:#1f2a20;font-weight:700;text-align:left;padding-left:12px!important;white-space:nowrap;text-transform:uppercase;}
+  .ukt-target td{
+    background:linear-gradient(135deg,#e3f2fd 0%,#bbdefb 45%,#90caf9 100%);
+    color:#0d47a1; font-weight:700;
+  }
+  .ukt-target .ukt-part{
+    background:linear-gradient(135deg,#e3f2fd 0%,#bbdefb 45%,#90caf9 100%);
+    color:#0d47a1; font-weight:800;
+  }
   .c-ok{background:#e7f3e8;color:#1e6b24;}
   .c-ng{background:var(--red-soft);color:var(--red);font-weight:800;}
   .legend-note{font-size:11.5px;color:#5a6570;margin-top:8px;}
@@ -1154,7 +1158,7 @@ function fmtTgl(iso){
 const METRIC_COLORS = ['\u0394L','#8bc34a','\u0394a','#e91e63','\u0394b','#2196f3','\u0394E','#ff9800'];
 function ukurTable(rec){
   return `<table class="ukt"><thead>
-    <tr><th rowspan="2" class="ukt-lab">ARIA CHECK</th>
+    <tr><th rowspan="2" class="ukt-lab">AREA CHECK</th>
       ${[0,2,4,6].map(ix=>`<th colspan="3" class="ukt-metric" style="background:${METRIC_COLORS[ix+1]}">${METRIC_COLORS[ix]}</th>`).join('')}</tr>
     <tr>${[0,2,4,6].map(()=>ANGLES.map((_,ai)=>`<th class="ukt-ang">${ANGLES[ai]}</th>`).join('')).join('')}</tr>
   </thead><tbody>
@@ -1163,12 +1167,12 @@ function ukurTable(rec){
         const cls = (b && !isNaN(x) && (x<b[0]||x>b[1])) ? 'c-ng' : (b ? 'c-ok' : '');
         return `<td class="${cls}">${x}</td>`;
       }).join('')).join('')}</tr>`).join('')}
-    <tr class="ukt-target"><td class="ukt-part">TARGET UPPER</td>${METRICS.map(([m])=>{
+    <tr class="ukt-target"><td class="ukt-part">Target Max Upper ( + )</td>${METRICS.map(([m])=>{
         if(m==='dE') return `<td colspan="3">${DE_MAX.toFixed(1)}</td>`;
         const b = boundsOf(rec.kode, m, 0);
         return [0,1,2].map(()=>`<td>${b?b[1]:'\u2014'}</td>`).join('');
       }).join('')}</tr>
-    <tr class="ukt-target"><td class="ukt-part">TARGET LOWER</td>${METRICS.map(([m])=>{
+    <tr class="ukt-target"><td class="ukt-part">Target Max Lower ( - )</td>${METRICS.map(([m])=>{
         if(m==='dE') return `<td colspan="3">\u2014</td>`;
         const b = boundsOf(rec.kode, m, 0);
         return [0,1,2].map(()=>`<td>${b?b[0]:'\u2014'}</td>`).join('');
@@ -1200,9 +1204,9 @@ function chartSVG(rec, m){
   const zero = `<line x1="${ml}" x2="${W-mr}" y1="${Y(y0v).toFixed(1)}" y2="${Y(y0v).toFixed(1)}" stroke="#CBD5E1" stroke-width="1.2"/>`;
   let tl='';
   if(tUp!==null && tUp<=hi){ const yy=Y(tUp).toFixed(1);
-    tl+=`<line x1="${ml}" x2="${W-mr}" y1="${yy}" y2="${yy}" stroke="#111" stroke-width="2" stroke-dasharray="7 4"/><text x="${W-mr-3}" y="${yy-4}" font-size="8.6" font-weight="800" fill="#111" text-anchor="end">TARGET UPPER ${+tUp}</text>`; }
+    tl+=`<line x1="${ml}" x2="${W-mr}" y1="${yy}" y2="${yy}" stroke="#1565C0" stroke-width="2" stroke-dasharray="7 4"/><text x="${W-mr-3}" y="${yy-4}" font-size="8.6" font-weight="800" fill="#1565C0" text-anchor="end">TARGET MAX UPPER ( + ) ${+tUp}</text>`; }
   if(tLo!==null && tLo>=lo){ const yy=Y(tLo).toFixed(1);
-    tl+=`<line x1="${ml}" x2="${W-mr}" y1="${yy}" y2="${yy}" stroke="#111" stroke-width="2" stroke-dasharray="7 4"/><text x="${W-mr-3}" y="${+yy+11}" font-size="8.6" font-weight="800" fill="#111" text-anchor="end">TARGET LOWER ${+tLo}</text>`; }
+    tl+=`<line x1="${ml}" x2="${W-mr}" y1="${yy}" y2="${yy}" stroke="#1565C0" stroke-width="2" stroke-dasharray="7 4"/><text x="${W-mr-3}" y="${+yy+11}" font-size="8.6" font-weight="800" fill="#1565C0" text-anchor="end">TARGET MAX LOWER ( - ) ${+tLo}</text>`; }
   if(tMax!==null){ const yy=Y(tMax).toFixed(1);
     tl+=`<line x1="${ml}" x2="${W-mr}" y1="${yy}" y2="${yy}" stroke="#E11D48" stroke-width="2" stroke-dasharray="8 4"/><text x="${W-mr-3}" y="${yy-4}" font-size="8.6" font-weight="800" fill="#E11D48" text-anchor="end">\u0394E TARGET MAX ${+tMax}</text>`; }
   let series='';
