@@ -983,7 +983,7 @@ function ssRender(){
     <span style="font-size:15px;font-weight:800;color:var(--brand)">${esc(u.kode)} — ${esc(u.nama)}</span>
     <span class="ss-badge" style="background:#eef2f7;color:var(--brand)">Warna ${esc(r.kode)}</span>
     <span style="font-size:12.5px;color:#5a6570">📅 ${fmtTgl(r.tanggal)} • ${esc(r.shift)} • No.Body ${esc(r.noBody||'-')}</span>
-    <span class="ss-badge ${okAll?'s-ok':'s-cek'}" style="margin-left:auto">${okAll ? 'Checked ✓' : '⚠ '+ngs.length+' sel NG'}</span>`;
+    <span class="ss-badge ${okAll?'s-ok':'s-cek'}" style="margin-left:auto">${okAll ? 'Over All OK ✓' : '⚠ ' + ngs.map(n=>`${n.row} ${({dL:'ΔL',da:'Δa',db:'Δb',dE:'ΔE'})[n.m]}${ANGLES[n.a]} NG`).join(' • ')}</span>`;
   box.innerHTML = chartHTML(r);
   $('#ssDots').innerHTML = recs.map((_,i)=>`<button class="ss-dot ${i===ssIdx?'on':''}" onclick="ssGo(${i})" title="Record ${i+1}"></button>`).join('');
 }
@@ -1244,14 +1244,16 @@ function riwayatList(unitId, fk, fb){
         <summary>
           📅 <b>${fmtTgl(r.tanggal)}</b> • warna <b>${esc(r.kode)}</b> • ${esc(r.area||'FULL')} • No.Body ${esc(r.noBody||'-')} •
           ΔE max <b class="${r.maxDE<=DE_MAX?'de-ok':'de-bad'}">${(r.maxDE ?? Math.max(...Object.values(r.rows).flatMap(v=>v.dE))).toFixed(2)}</b> •
-          <b class="${ngs.length?'de-bad':'de-ok'}">${ngs.length ? '⚠ '+ngs.length+' sel NG' : 'Checked ✓'}</b> • ${esc(r.shift)}
-          <span style="margin-left:auto;font-size:11px;color:#8a988c">📊 tabel + 4 grafik</span>
+          <b class="${ngs.length?'de-bad':'de-ok'}" style="margin-left:auto">${ngs.length
+            ? '⚠ ' + ngs.map(n=>`${n.row} ${({dL:'ΔL',da:'Δa',db:'Δb',dE:'ΔE'})[n.m]}${ANGLES[n.a]} NG`).join(' • ')
+            : 'Over All OK ✓'}</b> • ${esc(r.shift)}
+          <span style="font-size:11px;color:#8a988c">📊 tabel + 4 grafik</span>
           ${isAdmin()?`<button class="mini danger delbtn" onclick="event.preventDefault();delUkur('${r.id}')">🗑 Hapus</button>`:''}
         </summary>
         <div class="inner">
           ${ukurTable(r)}
           ${chartHTML(r)}
-          ${ngs.length ? `<div class="legend-note" style="color:var(--red);font-weight:700">⚠ NG: ${ngs.map(n=>n.label).join(' • ')}</div>` : `<div class="legend-note" style="color:#1e6b24;font-weight:700">✓ Semua sel sesuai target ADM</div>`}
+
         </div>
       </details>`;
   }).join('');
