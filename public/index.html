@@ -628,8 +628,19 @@ function render(){
 
 // ---------- HALAMAN: LOGIN ----------
 function renderLogin(){
-  document.querySelector('.topbar').style.background = 'transparent';
-  document.querySelector('.topbar').style.borderBottom = 'none';
+  const lw = document.querySelector('.login-wrap');
+  if(lw){
+    lw.style.position = 'fixed';
+    lw.style.top = '0'; lw.style.left = '0'; lw.style.right = '0'; lw.style.bottom = '0';
+    lw.style.width = '100vw'; lw.style.height = '100vh';
+    lw.style.zIndex = '10';
+    lw.style.backgroundSize = 'cover';
+    lw.style.backgroundPosition = 'center';
+    document.body.style.background = '#ffffff';
+    document.body.style.overflow = 'hidden';
+  }
+  const tb = document.querySelector('.topbar');
+  if(tb){ tb.style.background = 'transparent'; tb.style.borderBottom = 'none'; }
   $('#app').innerHTML = `
     <div class="login-wrap">
       <div class="login-card">
