@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Monitoring Color — PT Astra Daihatsu Motor</title>
-<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <style>
   /* ============ TOKENS ============ */
   :root{
@@ -320,6 +320,9 @@
   }
   .dl-btn:hover{background:#166530;}
   .dl-btn svg{width:16px;height:16px;}
+  .uk-chk{width:16px;height:16px;accent-color:#1e7e3c;cursor:pointer;flex-shrink:0;margin-right:2px;}
+  .uk-all{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--ink-2);cursor:pointer;}
+  .uk-all input{width:15px;height:15px;accent-color:var(--brand);cursor:pointer;}
   .ukur-filter{margin:-6px 0 12px;font-size:13px;}
   .ukur-filter select{border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-family:inherit;font-size:13px;background:#fff;}
 
@@ -1189,79 +1192,186 @@ async function saveInput(){
   }catch(e){ toast(e.message || 'Gagal simpan', false); }
 }
 
+function toggleAllChecks(cb){
+  document.querySelectorAll('#riwayatList .uk-chk').forEach(c=>c.checked = cb.checked);
+}
+
 // ---------- EXPORT EXCEL ----------
-async function loadSheetJS(){
-  if(window.XLSX) return true;
+async function loadExcelJS(){
+  if(window.ExcelJS) return true;
   await new Promise((resolve)=>{
     const s = document.createElement('script');
-    s.src = 'https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js';
+    s.src = 'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js';
     s.onload = resolve; s.onerror = resolve;
     document.head.appendChild(s);
   });
-  return !!window.XLSX;
+  return !!window.ExcelJS;
 }
 async function downloadExcel(unitKode, unitNama){
-  const ok = await loadSheetJS();
+  const ok = await loadExcelJS();
   if(!ok){ toast('Gagal memuat modul Excel — cek koneksi internet', false); return; }
+
+  // kumpulkan record yang dicentang
+  const ids = [...document.querySelectorAll('#riwayatList .uk-chk:checked')].map(c=>c.dataset.id);
   const unitId = DB.units.find(x=>x.kode===unitKode)?.id;
-  const list = DB.measurements.filter(r=>r.unitId===unitId);
-  if(!list.length){ toast('Belum ada data untuk di-download', false); return; }
+  let list = DB.measurements.filter(r=>r.unitId===unitId);
+  if(ids.length) list = list.filter(r=>ids.includes(r.id));
+  if(!list.length){ toast('Centang dulu data yang mau di-download (atau pakai Pilih semua)', false); return; }
 
-  const wb = XLSX.utils.book_new();
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'Monitoring Color - PT Astra Daihatsu Motor';
 
-  // ---- SHEET 1: DATA (pivot per record: 1 baris = 1 tanggal × warna, kolom = part×metrik×sudut) ----
-  const hdr = ['Tanggal','Shift','No Body','Warna','Area'];
-  PARTS8.forEach(p=>{ ['dL','da','db','dE'].forEach(m=>{
-    const ml = {dL:'ΔL',da:'Δa',db:'Δb',dE:'ΔE'}[m];
-    ['25°','45°','75°'].forEach(a=>hdr.push(`${p} ${ml} ${a}`));
-  });});
-  hdr.push('ΔE Max','Total NG','Status');
-  const aoa = [hdr];
+  const C = {
+    dL:'FF8BC34A', da:'FFE91E63', db:'FF2196F3', dE:'FFFF9800',
+    labBg:'FF3D4B3D', labFg:'FFFFFFFF',
+    angBg:'FFF2F4EE',
+    partBg:'FFEEF2EA',
+    okBg:'FFE7F3E8', okFg:'FF1E6B24',
+    ngBg:'FFFDEAEA', ngFg:'FFC1121F',
+    tgt1:'FFE3F2FD', tgt2:'FF90CAF9', tgtFg:'FF0D47A1',
+    border:'FFB7C2B7'
+  };
+  const thin = {style:'thin', color:{argb:C.border}};
+  const BORDER = {top:thin,left:thin,bottom:thin,right:thin};
+  const MET = ['dL','da','db','dE'];
+  const MLBL = {dL:'\u0394L', da:'\u0394a', db:'\u0394b', dE:'\u0394E'};
+  const ANG = ['25\u00b0','45\u00b0','75\u00b0'];
+
+  // ---------- SHEET RINGKASAN ----------
+  const ws0 = wb.addWorksheet('RINGKASAN');
+  ws0.columns = [
+    {header:'Tanggal', key:'t', width:14},{header:'Shift', key:'s', width:8},
+    {header:'No Body', key:'n', width:14},{header:'Warna', key:'w', width:9},
+    {header:'Area', key:'a', width:9},{header:'\u0394E Max', key:'m', width:10},
+    {header:'Jumlah NG', key:'g', width:11},{header:'Status', key:'st', width:14}
+  ];
+  ws0.getRow(1).eachCell(c=>{ c.font={bold:true,color:{argb:'FFFFFFFF'}}; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF0D3B66'}}; });
   list.forEach(r=>{
-    const row = [r.tanggal, r.shift, r.noBody||'-', r.kode, r.area||'FULL'];
-    PARTS8.forEach(p=>{ ['dL','da','db','dE'].forEach(m=>{
-      const v = (r.rows[p] && r.rows[p][m]) ? r.rows[p][m] : ['','',''];
-      ['25°','45°','75°'].forEach((a,i)=>row.push(v[i]!==undefined ? v[i] : ''));
-    });});
-    row.push(r.maxDE!==undefined ? r.maxDE : '');
     const ngs = hitungNG(r);
-    row.push(ngs.length);
-    row.push(ngs.length ? 'NG' : 'OK');
-    aoa.push(row);
+    const row = ws0.addRow({t:r.tanggal, s:r.shift, n:r.noBody||'-', w:r.kode, a:r.area||'FULL',
+      m: (typeof r.maxDE==='number'? r.maxDE : Math.max(...Object.values(r.rows).flatMap(v=>v.dE))),
+      g: ngs.length, st: ngs.length? 'NG ('+ngs.length+' sel)' : 'Over All OK'});
+    const stCell = row.getCell(8);
+    stCell.font = {bold:true, color:{argb: ngs.length? 'FFC1121F':'FF1E6B24'}};
+    stCell.fill = {type:'pattern',pattern:'solid',fgColor:{argb: ngs.length? 'FFFDEAEA':'FFE7F3E8'}};
   });
-  const ws1 = XLSX.utils.aoa_to_sheet(aoa);
-  // kolom lebar
-  ws1['!cols'] = [{wch:12},{wch:7},{wch:11},{wch:7},{wch:7}];
-  for(let i=5;i<hdr.length;i++) ws1['!cols'][i] = {wch:9};
-  XLSX.utils.book_append_sheet(wb, ws1, 'DATA');
 
-  // ---- SHEET 2+: GRAFIK per record (pivot: baris = sudut, kolom = part, per metrik) ----
-  list.slice(0,10).forEach((r,ri)=>{
-    const parts = Object.keys(r.rows).sort((a,b)=>PARTS8.indexOf(a)-PARTS8.indexOf(b));
-    const aoa2 = [['PANEL','25°','45°','75°']];
-    parts.forEach(p=>{
-      const row = [p];
-      ['dL','da','db','dE'].forEach(m=>{
-        row.push(r.rows[p][m][0], r.rows[p][m][1], r.rows[p][m][2]);
-      });
-      aoa2.push(row);
+  // ---------- SHEET PER RECORD (format = persis tampilan web) ----------
+  list.forEach((r,ri)=>{
+    const parts = Object.keys(r.rows).sort((a,b)=>PARTS8.findIndex(p=>p.toUpperCase()===a.toUpperCase()) - PARTS8.findIndex(p=>p.toUpperCase()===b.toUpperCase()));
+    const safeName = `${ri+1}) ${r.kode} ${r.tanggal.slice(5).replace(/-/g,'.')}`.replace(/[*?:\\/\[\]]/g,'-');
+    const ws = wb.addWorksheet(safeName, {views:[{state:'frozen', ySplit:2}]});
+
+    // header baris 1: AREA CHECK (merge A1:A2) + metrik berwarna (merge 3 kolom)
+    ws.mergeCells('A1:A2');
+    const lab = ws.getCell('A1');
+    lab.value = 'AREA CHECK';
+    lab.font = {bold:true, color:{argb:C.labFg}, size:11};
+    lab.fill = {type:'pattern',pattern:'solid',fgColor:{argb:C.labBg}};
+    lab.alignment = {horizontal:'left', vertical:'middle'};
+    let col = 2;
+    MET.forEach(m=>{
+      ws.mergeCells(1, col, 1, col+2);
+      const c = ws.getCell(1, col);
+      c.value = MLBL[m];
+      c.font = {bold:true, color:{argb:'FFFFFFFF'}, size:12};
+      c.fill = {type:'pattern',pattern:'solid',fgColor:{argb:C[m]}};
+      c.alignment = {horizontal:'center', vertical:'middle'};
+      col += 3;
     });
-    // target rows
-    const t3 = boundsOf(r.kode,'dL',0), ta = boundsOf(r.kode,'da',0), tb = boundsOf(r.kode,'db',0);
-    aoa2.push(['TARGET MAX ΔL', t3[1], t3[1], t3[1]]);
-    aoa2.push(['TARGET MIN ΔL', t3[0], t3[0], t3[0]]);
-    aoa2.push(['TARGET MAX Δa', ta[1], ta[1], ta[1]]);
-    aoa2.push(['TARGET MIN Δa', ta[0], ta[0], ta[0]]);
-    aoa2.push(['TARGET MAX Δb', tb[1], tb[1], tb[1]]);
-    aoa2.push(['TARGET MIN Δb', tb[0], tb[0], tb[0]]);
-    aoa2.push(['ΔE MAX', DE_MAX, DE_MAX, DE_MAX]);
-    const ws = XLSX.utils.aoa_to_sheet(aoa2);
-    ws['!cols'] = [{wch:18},{wch:10},{wch:10},{wch:10}];
-    XLSX.utils.book_append_sheet(wb, ws, `G${ri+1}-${r.kode} ${r.tanggal.slice(5)}`);
+
+    // header baris 2: sudut
+    let c2 = 2;
+    MET.forEach(()=>{
+      ANG.forEach(a=>{
+        const c = ws.getCell(2, c2++);
+        c.value = a;
+        c.font = {bold:true, color:{argb:'FF1F2A20'}, size:10};
+        c.fill = {type:'pattern',pattern:'solid',fgColor:{argb:C.angBg}};
+        c.alignment = {horizontal:'center'};
+      });
+    });
+
+    // baris data per part
+    parts.forEach(p=>{
+      const row = ws.addRow([p.toUpperCase()]);
+      const pc = row.getCell(1);
+      pc.font = {bold:true, color:{argb:'FF1F2A20'}, size:10};
+      pc.fill = {type:'pattern',pattern:'solid',fgColor:{argb:C.partBg}};
+      pc.alignment = {horizontal:'left'};
+      let cc = 2;
+      MET.forEach(m=>{
+        for(let a=0;a<3;a++){
+          const b = boundsOf(r.kode, m, a);
+          const v = r.rows[p][m][a];
+          const isNG = b && !isNaN(v) && (v<b[0]||v>b[1]);
+          const cell = row.getCell(cc++);
+          cell.value = v;
+          cell.alignment = {horizontal:'center'};
+          if(isNG){ cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:C.ngBg}}; cell.font={bold:true,color:{argb:C.ngFg}}; }
+          else if(b){ cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:C.okBg}}; cell.font={color:{argb:C.okFg}}; }
+        }
+      });
+    });
+
+    // baris TARGET MAX UPPER ( + ) & LOWER ( - ) — gradient biru
+    const tgtRow = (label, getVal, dEVal) => {
+      const row = ws.addRow([label]);
+      const pc = row.getCell(1);
+      pc.font = {bold:true, color:{argb:C.tgtFg}, size:10};
+      pc.alignment = {horizontal:'left'};
+      pc.fill = {type:'gradient', gradient:'angle', degree:0,
+        stops:[{position:0,color:{argb:C.tgt1}},{position:1,color:{argb:C.tgt2}}]};
+      let cc = 2;
+      MET.forEach(m=>{
+        if(m==='dE'){
+          const c = row.getCell(cc);
+          c.value = dEVal; c.font={bold:true,color:{argb:C.tgtFg}};
+          c.alignment={horizontal:'center'};
+          ws.mergeCells(row.number, cc, row.number, cc+2);
+          cc += 3;
+          return;
+        }
+        for(let a=0;a<3;a++){
+          const b = boundsOf(r.kode, m, a);
+          const c = row.getCell(cc++);
+          c.value = b ? getVal(b) : '';
+          c.font = {bold:true,color:{argb:C.tgtFg}};
+          c.alignment = {horizontal:'center'};
+          c.fill = {type:'gradient', gradient:'angle', degree:0,
+            stops:[{position:0,color:{argb:C.tgt1}},{position:1,color:{argb:C.tgt2}}]};
+        }
+      });
+      row.eachCell(c=>{ c.border = BORDER; });
+    };
+
+    tgtRow('Target Max Upper ( + )', b=>b[1], DE_MAX);
+    tgtRow('Target Max Lower ( - )', b=>b[0], '');
+
+    // border semua sel data & header
+    ws.eachRow({includeEmpty:false}, (row, rn)=>{
+      if(rn<=2 || rn>ws.rowCount-2) {
+        row.eachCell(c=>{ c.border = BORDER; });
+      } else {
+        row.eachCell(c=>{ c.border = BORDER; });
+      }
+    });
+
+    // lebar kolom
+    ws.getColumn(1).width = 18;
+    for(let i=2;i<=13;i++) ws.getColumn(i).width = 9;
   });
 
-  XLSX.writeFile(wb, `Monitoring-${unitKode}-${new Date().toISOString().slice(0,10)}.xlsx`);
-  toast('File Excel ter-download ✓');
+  const safe = s => String(s).replace(/[\\\/*?:\[\]]/g,'-');
+  wb.xlsx.writeBuffer().then(buf=>{
+    const blob = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `Monitoring-${unitKode}-${list.length}data-${new Date().toISOString().slice(0,10)}.xlsx`;
+    a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
+    toast(`Excel ter-download ✓ (${list.length} data)`);
+  });
 }
 
 function renderLastInputs(){
@@ -1394,6 +1504,7 @@ function riwayatList(unitId, fk, fb){
     return `
       <details class="ukur"${openAttr}>
         <summary>
+          <input type="checkbox" class="uk-chk" data-id="${r.id}" onclick="event.stopPropagation()" title="Centang untuk ikut di-download">
           📅 <b>${fmtTgl(r.tanggal)}</b> • warna <b>${esc(r.kode)}</b> • ${esc(r.area||'FULL')} • No.Body ${esc(r.noBody||'-')} •
           ΔE max <b class="${r.maxDE<=DE_MAX?'de-ok':'de-bad'}">${(r.maxDE ?? Math.max(...Object.values(r.rows).flatMap(v=>v.dE))).toFixed(2)}</b> •
           <b class="${ngs.length?'de-bad':'de-ok'}" style="margin-left:auto">${ngs.length
@@ -1434,6 +1545,7 @@ function ukurSection(unitId){
   return `<div id="riwayatSect"></div>
     <div class="ukur-head">
       <h2 class="sect">📈 Riwayat Pengukuran (${list.length})</h2>
+      <label class="uk-all"><input type="checkbox" id="ukAll" onchange="toggleAllChecks(this)"> Pilih semua</label>
       <button class="dl-btn" onclick="downloadExcel('${uMeta?uMeta.kode:''}','${esc(uMeta?uMeta.nama:'')}')">
         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         DOWNLOAD THIS FILE
