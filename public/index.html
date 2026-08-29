@@ -15,6 +15,7 @@
     --radius:14px;
   }
   *{margin:0;padding:0;box-sizing:border-box}
+  html,body{background:#ffffff; overflow-x:hidden;}
   body{
     font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
     background:var(--bg); color:var(--ink); line-height:1.55;
@@ -614,6 +615,8 @@ function toast(msg, ok=true){
 window.addEventListener('hashchange', render);
 function render(){
   renderUserbox();
+  const tb = document.querySelector('.topbar');
+  if(tb){ tb.style.background = ''; tb.style.borderBottom = ''; }
   if(!SESSION || !DB){ renderLogin(); return; }
   const h = location.hash || '#/home';
   closeModal();
@@ -625,6 +628,8 @@ function render(){
 
 // ---------- HALAMAN: LOGIN ----------
 function renderLogin(){
+  document.querySelector('.topbar').style.background = 'transparent';
+  document.querySelector('.topbar').style.borderBottom = 'none';
   $('#app').innerHTML = `
     <div class="login-wrap">
       <div class="login-card">
