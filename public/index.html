@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Monitoring Color — PT Astra Daihatsu Motor</title>
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
   /* ============ TOKENS ============ */
   :root{
@@ -1485,6 +1487,134 @@ async function downloadExcel(unitKode, unitNama){
   toast(`Excel ter-download ✓ (${list.length} data)`);
 }
 
+async function downloadPDF(unitKode, unitNama){
+  if(!window.jspdf){
+    await new Promise((resolve)=>{
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+      s.onload = resolve; s.onerror = resolve;
+      document.head.appendChild(s);
+    });
+  }
+  if(!window.jspdf){ toast('Gagal memuat modul PDF — cek koneksi internet', false); return; }
+  const ids = [...document.querySelectorAll('#riwayatList .uk-chk:checked')].map(c=>c.dataset.id);
+  const unitId = DB.units.find(x=>x.kode===unitKode)?.id;
+  let list = DB.measurements.filter(r=>r.unitId===unitId);
+  if(ids.length) list = list.filter(r=>ids.includes(r.id));
+  if(!list.length){ toast('Centang dulu data yang mau di-download', false); return; }
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({orientation:'landscape', unit:'mm', format:'a4'});
+  const pageW = 297, pageH = 210;
+  let firstPage = true;
+  for(let ri=0; ri<list.length; ri++){
+    const r = list[ri];
+    if(!firstPage) pdf.addPage();
+    pdf.setFont('helvetica','bold'); pdf.setFontSize(14);
+    pdf.setTextColor(13,59,102);
+    pdf.text('Daily Monitoring Color', 14, 14);
+    pdf.setFontSize(11);
+    pdf.text(unitKode + ' \u2014 ' + unitNama, 14, 20);
+    pdf.setFont('helvetica','normal'); pdf.setFontSize(9);
+    pdf.setTextColor(90,101,112);
+    pdf.text('Tanggal: ' + fmtTgl(r.tanggal) + '  |  Shift: ' + r.shift + '  |  No.Body: ' + (r.noBody||'-') + '  |  Warna: ' + r.kode, 14, 25);
+    const ngs = hitungNG(r);
+    if(ngs.length){
+      pdf.setTextColor(193,18,31);
+      pdf.setFont('helvetica','bold');
+      pdf.text('NG: ' + ngs.map(n=>n.label).join(' | '), 14, 30);
+    } else {
+      pdf.setTextColor(22,163,52);
+      pdf.setFont('helvetica','bold');
+      pdf.text('Over All OK', 14, 30);
+    }
+    // Grafik 4 buah (2x2)
+    const svgStrs = MET.map(m=>chartSVG(r, m));
+    for(let mi=0; mi<svgStrs.length; mi++){
+      const pngData = await new Promise((res)=>{
+        const cv = document.createElement('canvas');
+        cv.width = 1360; cv.height = 624;
+        const ctx = cv.getContext('2d');
+        const img = new Image();
+        const src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgStrs[mi]);
+        img.onload = ()=>{
+          ctx.fillStyle='#fff'; ctx.fillRect(0,0,1360,624);
+          ctx.drawImage(img,0,0,1360,624);
+          cv.toBlob(b=>res(b), 'image/png');
+        };
+        img.onerror = ()=>res(null);
+        img.src = src;
+      });
+      if(pngData){
+        const ab = await pngData.arrayBuffer();
+        const col = mi % 2 === 0 ? 14 : 150;
+        const rowY = 38 + Math.floor(mi/2) * 52;
+        pdf.addImage(ab, 'PNG', col, rowY, 130, 48);
+      }
+    }
+    // tabel teks di bawah grafik
+    let tableY = 150;
+    pdf.setFontSize(9);
+    pdf.setTextColor(31,42,32);
+    pdf.setFont('helvetica','bold');
+    pdf.text('ARIA CHECK', 14, tableY);
+    let colX = 50;
+    MET.forEach(([m,l])=>{
+      pdf.text(l, colX, tableY);
+      colX += 55;
+    });
+    tableY += 5;
+    pdf.setFont('helvetica','normal');
+    pdf.setFontSize(8);
+    Object.entries(r.rows).forEach(([part,v])=>{
+      pdf.setFont('helvetica','bold');
+      pdf.text(part.toUpperCase(), 14, tableY);
+      colX = 50;
+      pdf.setFont('helvetica','normal');
+      MET.forEach(([m])=>{
+        for(let a=0;a<3;a++){
+          const b = boundsOf(r.kode, m, a);
+          const val = v[m][a];
+          const isNG = b && !isNaN(val) && (val<b[0]||val>b[1]);
+          if(isNG){ pdf.setTextColor(193,18,31); pdf.setFont('helvetica','bold'); }
+          else { pdf.setTextColor(30,107,36); }
+          pdf.text(String(val), colX, tableY);
+          colX += 18;
+        }
+        colX += 4;
+      });
+      tableY += 5;
+      pdf.setTextColor(31,42,32);
+    });
+    // target rows
+    pdf.setFont('helvetica','bold');
+    pdf.setTextColor(13,71,161);
+    pdf.text('Target Max Upper (+)', 14, tableY);
+    colX = 50;
+    MET.forEach(([m])=>{
+      if(m==='dE'){ pdf.text(String(DE_MAX), colX, tableY); colX += 55+4; return; }
+      const b = boundsOf(r.kode, m, 0);
+      for(let a=0;a<3;a++){ pdf.text(String(b?b[1]:''), colX, tableY); colX += 18; }
+      colX += 4;
+    });
+    tableY += 5;
+    pdf.text('Target Max Lower (-)', 14, tableY);
+    colX = 50;
+    MET.forEach(([m])=>{
+      if(m==='dE'){ pdf.text('-', colX, tableY); colX += 55+4; return; }
+      const b = boundsOf(r.kode, m, 0);
+      for(let a=0;a<3;a++){ pdf.text(String(b?b[0]:''), colX, tableY); colX += 18; }
+    });
+    // Footer
+    pdf.setFontSize(8);
+    pdf.setTextColor(140,150,160);
+    pdf.text('Monitoring Color \u2014 PT Astra Daihatsu Motor \u2022 Quality Engineering \u2022 KAP', pageW/2, pageH-6, {align:'center'});
+    pdf.setTextColor(0,0,0);
+    firstPage = false;
+  }
+  pdf.save('Monitoring-' + unitKode + '-' + new Date().toISOString().slice(0,10) + '.pdf');
+  toast('PDF ter-download \u2713 (' + list.length + ' data)');
+}
+
 function renderLastInputs(){
   const el = $('#lastInputs');
   if(!DB.measurements.length){ el.innerHTML = '<div style="font-size:13px;color:#8a988c">Belum ada data. Isi form di atas lalu klik INPUT.</div>'; return; }
@@ -1657,10 +1787,16 @@ function ukurSection(unitId){
     <div class="ukur-head">
       <h2 class="sect">📈 Riwayat Pengukuran (${list.length})</h2>
       <label class="uk-all"><input type="checkbox" id="ukAll" onchange="toggleAllChecks(this)"> Pilih semua</label>
-      <button class="dl-btn" onclick="downloadExcel('${uMeta?uMeta.kode:''}','${esc(uMeta?uMeta.nama:'')}')">
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        DOWNLOAD THIS FILE
-      </button>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-left:auto;">
+        <button class="dl-btn" onclick="downloadExcel('${uMeta?uMeta.kode:''}','${esc(uMeta?uMeta.nama:'')}')">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          EXCEL
+        </button>
+        <button class="dl-btn" style="background:#1a3a6b; box-shadow:0 3px 10px rgba(26,58,107,.3)" onclick="downloadPDF('${uMeta?uMeta.kode:''}','${esc(uMeta?uMeta.nama:'')}')">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          PDF
+        </button>
+      </div>
     </div>
     <div class="ukur-filter">Filter:
       <select id="ukurFilterSel" onchange="setUkurFilter('${unitId}')">
