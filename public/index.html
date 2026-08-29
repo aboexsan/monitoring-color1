@@ -1118,10 +1118,12 @@ function renderLastInputs(){
   el.innerHTML = DB.measurements.slice(0,5).map(r=>{
     const u = DB.units.find(x=>x.id===r.unitId) || {kode:'?', nama:'?'};
     const n = hitungNG(r);
-    const mx = (typeof r.maxDE === 'number') ? r.maxDE : Math.max(...Object.values(r.rows).flatMap(v=>v.dE));
+    const ngTxt = n.length ? n.map(x=>`${x.row} ${({dL:'ΔL',da:'Δa',db:'Δb',dE:'ΔE'})[x.m]}${ANGLES[x.a]} NG`).join(' • ') : '';
     return `<div style="font-size:13px;padding:7px 0;border-bottom:1px dashed var(--line)">
-      📅 ${fmtTgl(r.tanggal)} • <b>${esc(u.kode)}</b> • warna <b>${esc(r.kode)}</b> • ${esc(r.area)} • No.Body ${esc(r.noBody||'-')} • ΔE max <b>${mx.toFixed(2)}</b> •
-      ${n.length ? `<b style="color:var(--red)">${n.length} sel NG</b>` : `<b style="color:var(--brand-dark)">Checked</b>`} • ${esc(r.shift)}
+      📅 ${fmtTgl(r.tanggal)} • <b>${esc(u.kode)}</b> • warna <b>${esc(r.kode)}</b> • No.Body ${esc(r.noBody||'-')} •
+      ${n.length
+        ? `<span style="color:var(--red);font-weight:700">⚠ ${ngTxt}</span>`
+        : `<b style="color:#16a34a">Over All OK</b>`} • ${esc(r.shift)}
     </div>`;
   }).join('');
 }
