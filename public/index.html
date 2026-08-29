@@ -1585,7 +1585,7 @@ function chartSVG(rec, m){
     });
   }
   const xl = parts.map((p,i)=>`<text transform="translate(${X(i).toFixed(1)},${H-mb+12}) rotate(-32)" font-size="9.6" fill="#1F2937" text-anchor="end" font-weight="600">${p}</text>`).join('');
-  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
     <rect x="0" y="0" width="${W}" height="${H}" rx="12" fill="#F8FAFC"/>
     <text x="${ml}" y="13" font-size="12" font-weight="800" fill="#0F172A">${name} <tspan fill="#94A3B8" font-weight="600">\u2014 Trend Color (per area)</tspan></text>
     ${grid}${zero}${tl}${series}${xl}</svg>`;
