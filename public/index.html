@@ -625,8 +625,10 @@ function render(){
   renderUserbox();
   const tb = document.querySelector('.topbar');
   if(tb){ tb.style.background = ''; tb.style.borderBottom = ''; }
-  const lf = document.getElementById('loginFooter');
-  if(lf) lf.remove();
+  if(SESSION && DB){
+    const lf = document.getElementById('loginFooter');
+    if(lf) lf.remove();
+  }
   if(!SESSION || !DB){ renderLogin(); return; }
   const h = location.hash || '#/home';
   closeModal();
@@ -637,28 +639,17 @@ function render(){
 }
 
 // ---------- HALAMAN: LOGIN ----------
-function renderLogin(){
-  const lw = document.querySelector('.login-wrap');
-  if(lw){
-    lw.style.position = 'fixed';
-    lw.style.top = '0'; lw.style.left = '0'; lw.style.right = '0'; lw.style.bottom = '0';
-    lw.style.width = '100vw'; lw.style.height = '100vh';
-    lw.style.zIndex = '10';
-    lw.style.backgroundSize = 'cover';
-    lw.style.backgroundPosition = 'center';
-    document.querySelector('footer').style.display = 'none';
-    if(!document.getElementById('loginFooter')){
-      const f = document.createElement('div');
-      f.id = 'loginFooter';
-      f.className = 'login-footer';
-      f.innerHTML = '<span class="c1">© 2026 ABU IKHSAN®. ALL RIGHTS RESERVED</span><span class="c2">📧 <a class="mail" href="mailto:abu.ikhsan26@gmail.com">abu.ikhsan26@gmail.com</a></span>';
-      document.body.appendChild(f);
-    }
-    document.body.style.background = '#ffffff';
-    document.body.style.overflow = 'hidden';
+// footer copyright khusus halaman login
+function ensureLoginFooter(){
+  if(!document.getElementById('loginFooter')){
+    const f = document.createElement('div');
+    f.id = 'loginFooter';
+    f.className = 'login-footer';
+    f.innerHTML = '<span class="c1">© 2026 ABU IKHSAN®. ALL RIGHTS RESERVED</span><span class="c2">📧 <a class="mail" href="mailto:abu.ikhsan26@gmail.com">abu.ikhsan26@gmail.com</a></span>';
+    document.body.appendChild(f);
   }
-  const tb = document.querySelector('.topbar');
-  if(tb){ tb.style.background = 'transparent'; tb.style.borderBottom = 'none'; }
+}
+function renderLogin(){
   $('#app').innerHTML = `
     <div class="login-wrap">
       <div class="login-card">
@@ -684,6 +675,21 @@ function renderLogin(){
         </a>
       </div>
     </div>`;
+  const lw = document.querySelector('.login-wrap');
+  if(lw){
+    lw.style.position = 'fixed';
+    lw.style.top = '0'; lw.style.left = '0'; lw.style.right = '0'; lw.style.bottom = '0';
+    lw.style.width = '100vw'; lw.style.height = '100vh';
+    lw.style.zIndex = '10';
+    lw.style.backgroundSize = 'cover';
+    lw.style.backgroundPosition = 'center';
+    document.querySelector('footer').style.display = 'none';
+    ensureLoginFooter();
+    document.body.style.background = '#ffffff';
+    document.body.style.overflow = 'hidden';
+  }
+  const tb = document.querySelector('.topbar');
+  if(tb){ tb.style.background = 'transparent'; tb.style.borderBottom = 'none'; }
   setTimeout(()=>{ const el=$('#lgId'); if(el) el.focus(); }, 50);
 }
 
