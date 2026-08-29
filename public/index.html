@@ -834,7 +834,7 @@ async function delWarna(unitId, warnaId){
 const DE_MAX = 2.00;
 const METRICS = [['dL','ΔL'],['da','Δa'],['db','Δb'],['dE','ΔE']];
 const ANGLES = ['25°','45°','75°'];
-const PARTS8 = ['Fender LH','Fender RH','FR Bumper LH','FR Bumper RH','Quarter LH','Quarter RH','RR Bumper LH','RR Bumper RH'];
+const PARTS8 = ['FENDER LH','FR BUMPER LH','FENDER RH','FR BUMPER RH','QUARTER LH','RR BUMPER LH','QUARTER RH','RR BUMPER RH'];
 const BULAN = ['JAN','FEB','MAR','APR','MEI','JUN','JUL','AGU','SEP','OKT','NOV','DES'];
 
 // ---------- TARGET DEVIASI ADM per warna (dari lembar TARGET DATA COLOR ADM) ----------
@@ -1118,8 +1118,9 @@ function renderLastInputs(){
   el.innerHTML = DB.measurements.slice(0,5).map(r=>{
     const u = DB.units.find(x=>x.id===r.unitId) || {kode:'?', nama:'?'};
     const n = hitungNG(r);
+    const mx = (typeof r.maxDE === 'number') ? r.maxDE : Math.max(...Object.values(r.rows).flatMap(v=>v.dE));
     return `<div style="font-size:13px;padding:7px 0;border-bottom:1px dashed var(--line)">
-      📅 ${fmtTgl(r.tanggal)} • <b>${esc(u.kode)}</b> • warna <b>${esc(r.kode)}</b> • ${esc(r.area)} • No.Body ${esc(r.noBody||'-')} • ΔE max <b>${r.maxDE.toFixed(2)}</b> •
+      📅 ${fmtTgl(r.tanggal)} • <b>${esc(u.kode)}</b> • warna <b>${esc(r.kode)}</b> • ${esc(r.area)} • No.Body ${esc(r.noBody||'-')} • ΔE max <b>${mx.toFixed(2)}</b> •
       ${n.length ? `<b style="color:var(--red)">${n.length} sel NG</b>` : `<b style="color:var(--brand-dark)">Checked</b>`} • ${esc(r.shift)}
     </div>`;
   }).join('');
@@ -1145,7 +1146,7 @@ function ukurTable(rec){
       ${[0,2,4,6].map(ix=>`<th colspan="3" class="ukt-metric" style="background:${METRIC_COLORS[ix+1]}">${METRIC_COLORS[ix]}</th>`).join('')}</tr>
     <tr>${[0,2,4,6].map(()=>ANGLES.map((_,ai)=>`<th class="ukt-ang">${ANGLES[ai]}</th>`).join('')).join('')}</tr>
   </thead><tbody>
-    ${Object.entries(rec.rows).map(([r,v])=>`<tr><th class="ukt-part">${esc(r)}</th>${METRICS.map(([m])=>v[m].map((x,a)=>{
+    ${Object.entries(rec.rows).sort((a,b)=>PARTS8.findIndex(p=>p.toUpperCase()===a[0].toUpperCase()) - PARTS8.findIndex(p=>p.toUpperCase()===b[0].toUpperCase())).map(([r,v])=>`<tr><th class="ukt-part">${esc(r)}</th>${METRICS.map(([m])=>v[m].map((x,a)=>{
         const b = boundsOf(rec.kode, m, a);
         const cls = (b && !isNaN(x) && (x<b[0]||x>b[1])) ? 'c-ng' : (b ? 'c-ok' : '');
         return `<td class="${cls}">${x}</td>`;
@@ -1165,7 +1166,7 @@ function ukurTable(rec){
 
 // ---------- GRAFIK garis vs target ADM (gaya laporan QC) ----------
 function chartSVG(rec, m){
-  const parts = Object.keys(rec.rows);
+  const parts = Object.keys(rec.rows).sort((a,b)=>PARTS8.findIndex(p=>p.toUpperCase()===a.toUpperCase()) - PARTS8.findIndex(p=>p.toUpperCase()===b.toUpperCase()));
   const n = parts.length;
   const name = {dL:'\u0394L', da:'\u0394a', db:'\u0394b', dE:'\u0394E'}[m];
   const W=680, H=312, ml=52, mr=14, mt=20, mb=56;
