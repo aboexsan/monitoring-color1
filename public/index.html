@@ -1402,15 +1402,14 @@ async function downloadExcel(unitKode, unitNama){
     for(let pr=imgRow; pr<imgRow+34; pr++) ws.getRow(pr).height = 14;
   }
 
-  wb.xlsx.writeBuffer().then(buf=>{
-    const blob = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `Monitoring-${unitKode}-${list.length}data-${new Date().toISOString().slice(0,10)}.xlsx`;
-    a.click();
-    setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
-    toast(`Excel ter-download ✓ (${list.length} data)`);
-  });
+  const buf = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `Monitoring-${unitKode}-${list.length}data-${new Date().toISOString().slice(0,10)}.xlsx`;
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
+  toast(`Excel ter-download ✓ (${list.length} data)`);
 }
 
 function renderLastInputs(){
