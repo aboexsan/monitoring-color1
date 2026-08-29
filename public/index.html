@@ -1435,27 +1435,32 @@ async function downloadExcel(unitKode, unitNama){
     const pngBufs = [];
     for(const svg of svgStrs){
       try{
+        // pakai data URL (lebih reliable dari blob URL untuk SVG→canvas)
         const pngDataUrl = await new Promise((res)=>{
           const cv = document.createElement('canvas');
           cv.width = 1360; cv.height = 624;
           const ctx = cv.getContext('2d');
           const img = new Image();
-          const svgBlob = new Blob([svg], {type:'image/svg+xml;charset=utf-8'});
-          const url = URL.createObjectURL(svgBlob);
+          const svgData = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
           img.onload = ()=>{
-            ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,cv.width,cv.height);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0,0,cv.width,cv.height);
             ctx.drawImage(img, 0, 0, 1360, 624);
-            URL.revokeObjectURL(url);
-            cv.toBlob(b=>res(b), 'image/png');
+            try{
+              cv.toBlob(b=>{
+                if(b){ console.log('toBlob OK:', b.size, 'bytes'); res(b); }
+                else { console.log('toBlob NULL!'); res(null); }
+              }, 'image/png');
+            }catch(e2){ console.log('toBlob error:', e2.message); res(null); }
           };
-          img.onerror = ()=>{ URL.revokeObjectURL(url); res(null); };
-          img.src = url;
+          img.onerror = (e)=>{ console.log('img onerror'); res(null); };
+          img.src = svgData;
         });
         pngBufs.push(pngDataUrl);
-      }catch(e){ console.log('chart render error:', e); pngBufs.push(null); }
+        console.log('PNG result:', pngDataUrl ? pngDataUrl.size+' bytes' : 'NULL');
+      }catch(e){ console.log('chart render error:', e.message); pngBufs.push(null); }
     }
-    console.log('PNG buffers:', pngBufs.filter(Boolean).length, 'dari', svgStrs.length);
-    console.log('PNG buffers siap:', pngBufs.filter(Boolean).length, '/', pngBufs.length);
+    console.log('PNG berhasil:', pngBufs.filter(Boolean).length, 'dari', svgStrs.length);
     let imgRow = ws.rowCount + 2;
     for(let mi=0; mi<pngBufs.length; mi++){
       const blob = pngBufs[mi];
