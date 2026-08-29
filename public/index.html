@@ -1305,6 +1305,14 @@ async function downloadExcel(unitKode, unitNama){
   // ---------- SHEET PER RECORD (tabel + GRAFIK di bawahnya, persis web) ----------
   for (let ri = 0; ri < list.length; ri++){
     const r = list[ri];
+    // normalisasi: pastikan keys rows cocok dengan PARTS8 (biar chartSVG gak error)
+    PARTS8.forEach(p=>{
+      if(!r.rows[p]){
+        const match = Object.keys(r.rows).find(k=>k.toUpperCase()===p.toUpperCase());
+        if(match) r.rows[p] = r.rows[match];
+        else r.rows[p] = {dL:[0,0,0],da:[0,0,0],db:[0,0,0],dE:[0,0,0]};
+      }
+    });
     const parts = Object.keys(r.rows).sort((a,b)=>PARTS8.findIndex(p=>p.toUpperCase()===a.toUpperCase()) - PARTS8.findIndex(p=>p.toUpperCase()===b.toUpperCase()));
     const safeName = `${ri+1}) ${r.kode} ${r.tanggal.slice(5).replace(/-/g,'.')}`.replace(/[*?:\\/\[\]]/g,'-');
     const ws = wb.addWorksheet(safeName, {views:[{state:'frozen', ySplit:2}]});
@@ -1350,7 +1358,8 @@ async function downloadExcel(unitKode, unitNama){
       MET.forEach(m=>{
         for(let a=0;a<3;a++){
           const b = boundsOf(r.kode, m, a);
-          const v = r.rows[p][m][a];
+          const rowData = r.rows[p] && r.rows[p][m];
+          const v = (rowData && rowData[a] !== undefined) ? rowData[a] : 0;
           const isNG = b && !isNaN(v) && (v<b[0]||v>b[1]);
           const cell = row.getCell(cc++);
           cell.value = v;
