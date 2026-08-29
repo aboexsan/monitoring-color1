@@ -1198,18 +1198,34 @@ function toggleAllChecks(cb){
 
 // ---------- EXPORT EXCEL ----------
 async function loadExcelJS(){
-  if(window.ExcelJS) return true;
-  await new Promise((resolve)=>{
-    const s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js';
-    s.onload = resolve; s.onerror = resolve;
-    document.head.appendChild(s);
-  });
-  return !!window.ExcelJS;
+  if(window.ExcelJS && window.ExcelJS.Workbook) return true;
+  const urls = [
+    'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js',
+    'https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js',
+    'https://unpkg.com/exceljs@4.4.0/dist/exceljs.min.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js'
+  ];
+  for(const url of urls){
+    try{
+      await new Promise((resolve,reject)=>{
+        const s = document.createElement('script');
+        s.src = url;
+        s.onload = resolve;
+        s.onerror = ()=>reject(new Error('load fail: '+url));
+        document.head.appendChild(s);
+      });
+      if(window.ExcelJS && window.ExcelJS.Workbook) return true;
+      // SheetJS juga bisa (fallback format sederhana)
+      if(window.XLSX) return true;
+    }catch(e){ console.log('CDN gagal:', url); }
+  }
+  return false;
 }
 async function downloadExcel(unitKode, unitNama){
   const ok = await loadExcelJS();
-  if(!ok){ toast('Gagal memuat modul Excel — cek koneksi internet', false); return; }
+  if(!ok){ toast('Gagal memuat modul Excel — cek koneksi internet atau coba browser lain', false); return; }
+  const useExcelJS = window.ExcelJS && window.ExcelJS.Workbook;
+  console.log('Library Excel:', useExcelJS ? 'ExcelJS' : 'SheetJS');
 
   // kumpulkan record yang dicentang
   const ids = [...document.querySelectorAll('#riwayatList .uk-chk:checked')].map(c=>c.dataset.id);
@@ -1218,6 +1234,36 @@ async function downloadExcel(unitKode, unitNama){
   if(ids.length) list = list.filter(r=>ids.includes(r.id));
   if(!list.length){ toast('Centang dulu data yang mau di-download (atau pakai Pilih semua)', false); return; }
 
+  // ============ FALLBACK: SheetJS (data saja, tanpa styling) ============
+  if(!useExcelJS){
+    const wbX = XLSX.utils.book_new();
+    const hdr0 = ['Tanggal','Shift','No Body','Warna','Area'];
+    PARTS8.forEach(p=>{ ['dL','da','db','dE'].forEach(m=>{
+      const ml = {dL:'ΔL',da:'Δa',db:'Δb',dE:'ΔE'}[m];
+      ['25°','45°','75°'].forEach(a=>hdr0.push(`${p} ${ml} ${a}`));
+    });});
+    hdr0.push('ΔE Max','Total NG','Status');
+    const aoa0 = [hdr0];
+    list.forEach(r=>{
+      const row = [r.tanggal, r.shift, r.noBody||'-', r.kode, r.area||'FULL'];
+      PARTS8.forEach(p=>{ ['dL','da','db','dE'].forEach(m=>{
+        const v = (r.rows[p] && r.rows[p][m]) ? r.rows[p][m] : ['','',''];
+        ['25°','45°','75°'].forEach((a,i)=>row.push(v[i]!==undefined ? v[i] : ''));
+      });});
+      row.push(r.maxDE!==undefined ? r.maxDE : '');
+      const ngs = hitungNG(r);
+      row.push(ngs.length);
+      row.push(ngs.length ? 'NG' : 'Over All OK');
+      aoa0.push(row);
+    });
+    const wsX = XLSX.utils.aoa_to_sheet(aoa0);
+    XLSX.utils.book_append_sheet(wbX, wsX, 'DATA');
+    XLSX.writeFile(wbX, `Monitoring-${unitKode}-${new Date().toISOString().slice(0,10)}.xlsx`);
+    toast(`Excel ter-download ✓ (${list.length} data, format sederhana)`);
+    return;
+  }
+
+  // ============ ExcelJS (dengan styling lengkap) ============
   const wb = new ExcelJS.Workbook();
   wb.creator = 'Monitoring Color - PT Astra Daihatsu Motor';
 
