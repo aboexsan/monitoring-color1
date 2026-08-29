@@ -1256,8 +1256,9 @@ async function downloadExcel(unitKode, unitNama){
     stCell.fill = {type:'pattern',pattern:'solid',fgColor:{argb: ngs.length? 'FFFDEAEA':'FFE7F3E8'}};
   });
 
-  // ---------- SHEET PER RECORD (format = persis tampilan web) ----------
-  list.forEach((r,ri)=>{
+  // ---------- SHEET PER RECORD (tabel + GRAFIK di bawahnya, persis web) ----------
+  for (let ri = 0; ri < list.length; ri++){
+    const r = list[ri];
     const parts = Object.keys(r.rows).sort((a,b)=>PARTS8.findIndex(p=>p.toUpperCase()===a.toUpperCase()) - PARTS8.findIndex(p=>p.toUpperCase()===b.toUpperCase()));
     const safeName = `${ri+1}) ${r.kode} ${r.tanggal.slice(5).replace(/-/g,'.')}`.replace(/[*?:\\/\[\]]/g,'-');
     const ws = wb.addWorksheet(safeName, {views:[{state:'frozen', ySplit:2}]});
@@ -1360,9 +1361,47 @@ async function downloadExcel(unitKode, unitNama){
     // lebar kolom
     ws.getColumn(1).width = 18;
     for(let i=2;i<=13;i++) ws.getColumn(i).width = 9;
-  });
 
-  const safe = s => String(s).replace(/[\\\/*?:\[\]]/g,'-');
+    // ---- GRAFIK di bawah tabel (SVG → PNG → insert) ----
+    const svgStrs = MET.map(([m])=>chartSVG(r, m));
+    const pngBufs = [];
+    for(const svg of svgStrs){
+      try{
+        const pngDataUrl = await new Promise((res)=>{
+          const cv = document.createElement('canvas');
+          cv.width = 1360; cv.height = 624;
+          const ctx = cv.getContext('2d');
+          const img = new Image();
+          const svgBlob = new Blob([svg], {type:'image/svg+xml;charset=utf-8'});
+          const url = URL.createObjectURL(svgBlob);
+          img.onload = ()=>{
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,cv.width,cv.height);
+            ctx.drawImage(img, 0, 0, 1360, 624);
+            URL.revokeObjectURL(url);
+            cv.toBlob(b=>res(b), 'image/png');
+          };
+          img.onerror = ()=>{ URL.revokeObjectURL(url); res(null); };
+          img.src = url;
+        });
+        pngBufs.push(pngDataUrl);
+      }catch(e){ console.log('chart render error:', e); pngBufs.push(null); }
+    }
+    console.log('PNG buffers:', pngBufs.filter(Boolean).length, 'dari', svgStrs.length);
+    console.log('PNG buffers siap:', pngBufs.filter(Boolean).length, '/', pngBufs.length);
+    let imgRow = ws.rowCount + 2;
+    for(let mi=0; mi<pngBufs.length; mi++){
+      const blob = pngBufs[mi];
+      if(!blob) continue;
+      const ab = await blob.arrayBuffer();
+      const pngId = wb.addImage({buffer: ab, extension:'png'});
+      const gridCol = mi % 2 === 0 ? 1 : 8;
+      const gridRow = imgRow + Math.floor(mi/2)*17;
+      ws.addImage(pngId, {tl:{col:gridCol-1, row:gridRow-1}, ext:{width:480, height:220}});
+    }
+    ws.getRow(imgRow).height = 10;
+    for(let pr=imgRow; pr<imgRow+34; pr++) ws.getRow(pr).height = 14;
+  }
+
   wb.xlsx.writeBuffer().then(buf=>{
     const blob = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
     const a = document.createElement('a');
