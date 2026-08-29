@@ -36,12 +36,12 @@
     max-width:1080px; margin:0 auto; padding:10px 18px;
     display:flex; align-items:center; gap:16px; flex-wrap:wrap;
   }
-  .logo{display:flex; align-items:center; gap:11px; flex-shrink:0;}
+  .logo{display:flex; align-items:center; gap:12px; flex-shrink:0; margin-right:auto;}
   .logo-badge{display:flex;align-items:center;justify-content:center;}
-  .logo-badge img{width:46px; height:auto; border-radius:8px; box-shadow:0 2px 6px rgba(13,59,102,.22); display:block;}
+  .logo-badge img{width:58px; height:auto; border-radius:10px; box-shadow:0 2px 8px rgba(13,59,102,.25); display:block;}
   .logo-text{display:flex; flex-direction:column; line-height:1.22;}
-  .logo-text .t2{font-weight:800; font-size:14px; color:var(--brand); letter-spacing:.5px;}
-  .logo-text .t3{font-weight:800; font-size:9px; color:var(--red); letter-spacing:2.8px; margin-top:2px;}
+  .logo-text .t2{font-weight:800; font-size:17px; color:var(--brand); letter-spacing:.5px;}
+  .logo-text .t3{font-weight:800; font-size:11px; color:var(--red); letter-spacing:2.8px; margin-top:2px;}
   .searchbox{
     flex:1; min-width:220px; display:flex; align-items:center; gap:9px;
     background:#f2f5f2; border:1px solid var(--line); border-radius:10px; padding:9px 13px;
@@ -400,9 +400,18 @@
   .ub-out:hover{background:var(--red-soft);color:var(--red);border-color:#f3c1c3;}
 
   footer{
-    border-top:1px solid var(--line); background:#fff; margin-top:30px;
-    padding:22px; text-align:center; font-size:12.5px; color:var(--ink-3);
+    display:none;
   }
+  .login-footer{
+    position:fixed; left:0; right:0; bottom:0; z-index:11;
+    background:linear-gradient(90deg,#082A4D 0%,#0D3B66 45%,#14406e 72%,#1CC3C9 100%);
+    color:#eaf2fb; text-align:center;
+    padding:10px 16px; font-size:12px; font-weight:600; letter-spacing:.4px;
+  }
+  .login-footer .c1{font-weight:800; letter-spacing:.6px;}
+  .login-footer .c2{margin-left:10px; opacity:.95;}
+  .login-footer .mail{color:#ffd9a0; text-decoration:none; margin-left:10px;}
+  .login-footer .mail:hover{text-decoration:underline;}
 
   @media (max-width:720px){
     .detail{flex-direction:column;}
@@ -616,6 +625,8 @@ function render(){
   renderUserbox();
   const tb = document.querySelector('.topbar');
   if(tb){ tb.style.background = ''; tb.style.borderBottom = ''; }
+  const lf = document.getElementById('loginFooter');
+  if(lf) lf.remove();
   if(!SESSION || !DB){ renderLogin(); return; }
   const h = location.hash || '#/home';
   closeModal();
@@ -635,6 +646,14 @@ function renderLogin(){
     lw.style.zIndex = '10';
     lw.style.backgroundSize = 'cover';
     lw.style.backgroundPosition = 'center';
+    document.querySelector('footer').style.display = 'none';
+    if(!document.getElementById('loginFooter')){
+      const f = document.createElement('div');
+      f.id = 'loginFooter';
+      f.className = 'login-footer';
+      f.innerHTML = '<span class="c1">© 2026 ABU IKHSAN®. ALL RIGHTS RESERVED</span><span class="c2">📧 <a class="mail" href="mailto:abu.ikhsan26@gmail.com">abu.ikhsan26@gmail.com</a></span>';
+      document.body.appendChild(f);
+    }
     document.body.style.background = '#ffffff';
     document.body.style.overflow = 'hidden';
   }
