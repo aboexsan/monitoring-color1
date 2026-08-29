@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Monitoring Color — PT Astra Daihatsu Motor</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 <style>
   /* ============ TOKENS ============ */
   :root{
@@ -309,6 +310,16 @@
   .ss-dots{display:flex;gap:5px;padding:0 18px 14px;flex-wrap:wrap;}
   .ss-dot{width:9px;height:9px;border-radius:50%;background:#d7ded7;cursor:pointer;border:none;padding:0;}
   .ss-dot.on{background:var(--brand);transform:scale(1.25);}
+  .ukur-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:26px;margin-bottom:12px;}
+  .ukur-head h2{margin:0;}
+  .dl-btn{
+    margin-left:auto; display:inline-flex; align-items:center; gap:8px;
+    background:#1e7e3c; color:#fff; border:none; border-radius:10px;
+    padding:10px 18px; font-size:13px; font-weight:800; cursor:pointer;
+    box-shadow:0 3px 10px rgba(30,126,60,.3);
+  }
+  .dl-btn:hover{background:#166530;}
+  .dl-btn svg{width:16px;height:16px;}
   .ukur-filter{margin:-6px 0 12px;font-size:13px;}
   .ukur-filter select{border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-family:inherit;font-size:13px;background:#fff;}
 
@@ -1178,6 +1189,81 @@ async function saveInput(){
   }catch(e){ toast(e.message || 'Gagal simpan', false); }
 }
 
+// ---------- EXPORT EXCEL ----------
+async function loadSheetJS(){
+  if(window.XLSX) return true;
+  await new Promise((resolve)=>{
+    const s = document.createElement('script');
+    s.src = 'https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js';
+    s.onload = resolve; s.onerror = resolve;
+    document.head.appendChild(s);
+  });
+  return !!window.XLSX;
+}
+async function downloadExcel(unitKode, unitNama){
+  const ok = await loadSheetJS();
+  if(!ok){ toast('Gagal memuat modul Excel — cek koneksi internet', false); return; }
+  const unitId = DB.units.find(x=>x.kode===unitKode)?.id;
+  const list = DB.measurements.filter(r=>r.unitId===unitId);
+  if(!list.length){ toast('Belum ada data untuk di-download', false); return; }
+
+  const wb = XLSX.utils.book_new();
+
+  // ---- SHEET 1: DATA (pivot per record: 1 baris = 1 tanggal × warna, kolom = part×metrik×sudut) ----
+  const hdr = ['Tanggal','Shift','No Body','Warna','Area'];
+  PARTS8.forEach(p=>{ ['dL','da','db','dE'].forEach(m=>{
+    const ml = {dL:'ΔL',da:'Δa',db:'Δb',dE:'ΔE'}[m];
+    ['25°','45°','75°'].forEach(a=>hdr.push(`${p} ${ml} ${a}`));
+  });});
+  hdr.push('ΔE Max','Total NG','Status');
+  const aoa = [hdr];
+  list.forEach(r=>{
+    const row = [r.tanggal, r.shift, r.noBody||'-', r.kode, r.area||'FULL'];
+    PARTS8.forEach(p=>{ ['dL','da','db','dE'].forEach(m=>{
+      const v = (r.rows[p] && r.rows[p][m]) ? r.rows[p][m] : ['','',''];
+      ['25°','45°','75°'].forEach((a,i)=>row.push(v[i]!==undefined ? v[i] : ''));
+    });});
+    row.push(r.maxDE!==undefined ? r.maxDE : '');
+    const ngs = hitungNG(r);
+    row.push(ngs.length);
+    row.push(ngs.length ? 'NG' : 'OK');
+    aoa.push(row);
+  });
+  const ws1 = XLSX.utils.aoa_to_sheet(aoa);
+  // kolom lebar
+  ws1['!cols'] = [{wch:12},{wch:7},{wch:11},{wch:7},{wch:7}];
+  for(let i=5;i<hdr.length;i++) ws1['!cols'][i] = {wch:9};
+  XLSX.utils.book_append_sheet(wb, ws1, 'DATA');
+
+  // ---- SHEET 2+: GRAFIK per record (pivot: baris = sudut, kolom = part, per metrik) ----
+  list.slice(0,10).forEach((r,ri)=>{
+    const parts = Object.keys(r.rows).sort((a,b)=>PARTS8.indexOf(a)-PARTS8.indexOf(b));
+    const aoa2 = [['PANEL','25°','45°','75°']];
+    parts.forEach(p=>{
+      const row = [p];
+      ['dL','da','db','dE'].forEach(m=>{
+        row.push(r.rows[p][m][0], r.rows[p][m][1], r.rows[p][m][2]);
+      });
+      aoa2.push(row);
+    });
+    // target rows
+    const t3 = boundsOf(r.kode,'dL',0), ta = boundsOf(r.kode,'da',0), tb = boundsOf(r.kode,'db',0);
+    aoa2.push(['TARGET MAX ΔL', t3[1], t3[1], t3[1]]);
+    aoa2.push(['TARGET MIN ΔL', t3[0], t3[0], t3[0]]);
+    aoa2.push(['TARGET MAX Δa', ta[1], ta[1], ta[1]]);
+    aoa2.push(['TARGET MIN Δa', ta[0], ta[0], ta[0]]);
+    aoa2.push(['TARGET MAX Δb', tb[1], tb[1], tb[1]]);
+    aoa2.push(['TARGET MIN Δb', tb[0], tb[0], tb[0]]);
+    aoa2.push(['ΔE MAX', DE_MAX, DE_MAX, DE_MAX]);
+    const ws = XLSX.utils.aoa_to_sheet(aoa2);
+    ws['!cols'] = [{wch:18},{wch:10},{wch:10},{wch:10}];
+    XLSX.utils.book_append_sheet(wb, ws, `G${ri+1}-${r.kode} ${r.tanggal.slice(5)}`);
+  });
+
+  XLSX.writeFile(wb, `Monitoring-${unitKode}-${new Date().toISOString().slice(0,10)}.xlsx`);
+  toast('File Excel ter-download ✓');
+}
+
 function renderLastInputs(){
   const el = $('#lastInputs');
   if(!DB.measurements.length){ el.innerHTML = '<div style="font-size:13px;color:#8a988c">Belum ada data. Isi form di atas lalu klik INPUT.</div>'; return; }
@@ -1342,10 +1428,17 @@ function ukurSection(unitId){
   if(!list.length) return `<div id="riwayatSect"></div>
     <h2 class="sect" style="margin-top:26px">📈 Riwayat Pengukuran (0)</h2>
     <div class="empty-note" style="margin-bottom:0">Belum ada data pengukuran. Gunakan menu <b>＋ Input Data</b> di atas.</div>`;
+  const uMeta = DB.units.find(x=>x.id===unitId);
   const kodes  = [...new Set(list.map(r=>r.kode))];
   const bulans = [...new Set(list.map(r=>(r.tanggal||'').slice(0,7)))].filter(Boolean).sort().reverse();
   return `<div id="riwayatSect"></div>
-    <h2 class="sect" style="margin-top:26px">📈 Riwayat Pengukuran (${list.length})</h2>
+    <div class="ukur-head">
+      <h2 class="sect">📈 Riwayat Pengukuran (${list.length})</h2>
+      <button class="dl-btn" onclick="downloadExcel('${uMeta?uMeta.kode:''}','${esc(uMeta?uMeta.nama:'')}')">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        DOWNLOAD THIS FILE
+      </button>
+    </div>
     <div class="ukur-filter">Filter:
       <select id="ukurFilterSel" onchange="setUkurFilter('${unitId}')">
         <option value="">Semua warna (${list.length})</option>
