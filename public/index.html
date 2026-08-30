@@ -1657,10 +1657,10 @@ function chartSVG(rec, m){
   if(tLo!==null && tLo>=lo){ const yy=Y(tLo).toFixed(1);
     tl+=`<line x1="${ml}" x2="${W-mr}" y1="${yy}" y2="${yy}" stroke="#ff9800" stroke-width="2" stroke-dasharray="7 4"/><text x="${W-mr-3}" y="${+yy+11}" font-size="8.6" font-weight="800" fill="#b35c00" text-anchor="end">TARGET MAX LOWER ( - ) ${+tLo}</text>`; }
   if(tMax!==null){ const yy=Y(tMax).toFixed(1);
-    tl+=`<line x1="${ml}" x2="${W-mr}" y1="${yy}" y2="${yy}" stroke="#ff9800" stroke-width="2" stroke-dasharray="8 4"/><text x="${W-mr-3}" y="${yy-4}" font-size="8.6" font-weight="800" fill="#b35c00" text-anchor="end">\u0394E TARGET MAX ${+tMax}</text>`; }
+    tl+=`<line x1="${ml}" x2="${W-mr}" y1="${yy}" y2="${yy}" stroke="#E11D48" stroke-width="2" stroke-dasharray="8 4"/><text x="${W-mr-3}" y="${yy-4}" font-size="8.6" font-weight="800" fill="#E11D48" text-anchor="end">\u0394E TARGET MAX ${+tMax}</text>`; }
   let series='';
   // gaya Excel: 3 GARIS (25°/45°/75°) warna BERBEDA, menghubungkan antar part
-  const ACOLORS = ['#1e88e5','#F5A623','#43a047'];   // biru 25°, kuning 45°, hijau 75°
+  const ACOLORS = ['#1e88e5','#d9542b','#43a047'];   // biru 25°, oranye merah 45° (R80), hijau 75°
   for(let a=0;a<3;a++){
     const pts = parts.map((p,i)=>({i, v:+((rec.rows[p] && rec.rows[p][m] && rec.rows[p][m][a] !== undefined) ? rec.rows[p][m][a] : 0), p}));
     series += `<polyline points="${pts.map(pt=>`${X(pt.i).toFixed(1)},${Y(pt.v).toFixed(1)}`).join(' ')}" fill="none" stroke="${ACOLORS[a]}" stroke-width="2.2" opacity=".92"/>`;
@@ -1683,7 +1683,7 @@ function chartSVG(rec, m){
 function chartHTML(rec){
   const lg = `<div class="lg">
     <span><i style="background:#1e88e5"></i>25°</span>
-    <span><i style="background:#F5A623"></i>45°</span>
+    <span><i style="background:#d9542b"></i>45°</span>
     <span><i style="background:#43a047"></i>75°</span>
     <span><i style="background:#E11D48"></i>NG</span>
     <span><i style="background:#ff9800"></i>Target Max</span>
