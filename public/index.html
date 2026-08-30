@@ -1507,81 +1507,66 @@ async function downloadPDF(unitKode, unitNama){
   if(!list.length){ toast('Centang dulu data yang mau di-download', false); return; }
 
   const { jsPDF } = window.jspdf;
+
+  // Pastikan semua details terbuka sebelum capture
+  document.querySelectorAll('#riwayatList details.ukur').forEach(d=>d.setAttribute('open',''));
+  await new Promise(r=>setTimeout(r, 300));
+
   const pdf = new jsPDF({orientation:'landscape', unit:'mm', format:'a4'});
   const pageW = 297, pageH = 210;
   let firstPage = true;
 
   for(let ri=0; ri<list.length; ri++){
     const r = list[ri];
+    const detEl = document.querySelectorAll('#riwayatList details.ukur')[ri];
+    if(!detEl) continue;
+    detEl.setAttribute('open','');
+    await new Promise(r=>setTimeout(r, 200));
+
     if(!firstPage) pdf.addPage();
 
-    // --- HEADER INFO ---
-    pdf.setFont('helvetica','bold'); pdf.setFontSize(14);
-    pdf.setTextColor(13,59,102);
-    pdf.text('Daily Monitoring Color', 14, 12);
-    pdf.setFontSize(11);
-    pdf.text(unitKode + ' \u2014 ' + unitNama, 14, 18);
-    pdf.setFont('helvetica','normal'); pdf.setFontSize(9);
-    pdf.setTextColor(90,101,112);
-    pdf.text('Tanggal: ' + fmtTgl(r.tanggal) + '  |  Shift: ' + r.shift + '  |  No.Body: ' + (r.noBody||'-') + '  |  Warna: ' + r.kode, 14, 23);
-    const ngs = hitungNG(r);
-    if(ngs.length){
-      pdf.setTextColor(193,18,31); pdf.setFont('helvetica','bold'); pdf.setFontSize(9);
-      pdf.text('NG: ' + ngs.map(n=>n.label).join('  |  '), 14, 28);
-    } else {
-      pdf.setTextColor(22,163,52); pdf.setFont('helvetica','bold'); pdf.setFontSize(9);
-      pdf.text('Over All OK', 14, 28);
-    }
-
-    // --- TABEL: capture dari DOM pakai html2canvas (persis tampilan web) ---
-    const detailsEl = document.querySelector('#riwayatList details.ukur[open]') 
-                   || document.querySelector('details.ukur[open]');
-    const tableEl = detailsEl ? detailsEl.querySelector('.ukt') : null;
-    
-    if(tableEl){
-      const canvas = await html2canvas(tableEl, {
-        scale: 2, backgroundColor: '#ffffff',
-        useCORS: true, logging: false
+    // Capture SELURUH details content (tabel + grafik) sebagai SATU gambar high-res
+    const contentEl = detEl.querySelector('.inner');
+    if(contentEl){
+      const canvas = await html2canvas(contentEl, {
+        scale: 3,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+        logging: false,
+        width: contentEl.scrollWidth,
+        height: contentEl.scrollHeight
       });
-      const imgData = canvas.toDataURL('image/png');
-      const imgW = pageW - 24;
-      const imgH = (canvas.height / canvas.width) * imgW;
-      const finalH = Math.min(imgH, 62);   // max 62mm
-      pdf.addImage(imgData, 'PNG', 12, 30, imgW, finalH);
-    }
-
-    // --- GRAFIK 4 buah (SVG → PNG) di bawah tabel ---
-    const svgStrs = METRICS.map(([m])=>chartSVG(r, m));
-    const chartY = 96;         // mulai dari 96mm (setelah tabel max 62 + header 30 = 92)
-    const chartW = 138, chartH = 50;
-    const positions = [[12, chartY], [150, chartY], [12, chartY+chartH+5], [150, chartY+chartH+5]];
-    // max bottom = 96 + 50 + 5 + 50 = 201mm < 210mm A4 landscape ✓
-
-    for(let mi=0; mi<svgStrs.length; mi++){
-      const pngDataUrl = await new Promise((res)=>{
-        const cv = document.createElement('canvas');
-        cv.width = 1360; cv.height = 624;
-        const ctx = cv.getContext('2d');
-        const img = new Image();
-        const src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgStrs[mi]);
-        img.onload = ()=>{
-          ctx.fillStyle='#fff'; ctx.fillRect(0,0,1360,624);
-          ctx.drawImage(img,0,0,1360,624);
-          res(cv.toDataURL('image/png'));
-        };
-        img.onerror = ()=>res(null);
-        img.src = src;
-      });
-      if(pngDataUrl){
-        const [px, py] = positions[mi];
-        pdf.addImage(pngDataUrl, 'PNG', px, py, chartW, chartH);
+      const imgData = canvas.toDataURL('image/jpeg', 0.92);
+      
+      // Header di atas
+      pdf.setFont('helvetica','bold'); pdf.setFontSize(13);
+      pdf.setTextColor(13,59,102);
+      pdf.text('Daily Monitoring Color', 14, 12);
+      pdf.setFontSize(10);
+      pdf.text(unitKode + ' \u2014 ' + unitNama, 14, 17);
+      pdf.setFont('helvetica','normal'); pdf.setFontSize(8.5);
+      pdf.setTextColor(90,101,112);
+      pdf.text('Tanggal: ' + fmtTgl(r.tanggal) + '  |  Shift: ' + r.shift + '  |  No.Body: ' + (r.noBody||'-') + '  |  Warna: ' + r.kode, 14, 21);
+      
+      // Hitung dimensi agar fill page dengan margin
+      const marginX = 8, marginTop = 24, marginBottom = 10;
+      const availW = pageW - marginX*2;
+      const availH = pageH - marginTop - marginBottom;
+      const ratio = canvas.height / canvas.width;
+      let imgW = availW;
+      let imgH = imgW * ratio;
+      if(imgH > availH){
+        imgH = availH;
+        imgW = imgH / ratio;
       }
+      const offsetX = marginX + (availW - imgW)/2;
+      pdf.addImage(imgData, 'JPEG', offsetX, marginTop, imgW, imgH);
     }
 
-    // --- FOOTER ---
-    pdf.setFontSize(7.5);
+    // Footer
+    pdf.setFontSize(7);
     pdf.setTextColor(140,150,160);
-    pdf.text('Monitoring Color \u2014 PT Astra Daihatsu Motor \u2022 Quality Engineering \u2022 KAP', pageW/2, pageH-5, {align:'center'});
+    pdf.text('Monitoring Color \u2014 PT Astra Daihatsu Motor \u2022 Quality Engineering \u2022 KAP', pageW/2, pageH-4, {align:'center'});
     pdf.setTextColor(0,0,0);
     firstPage = false;
   }
