@@ -1341,7 +1341,7 @@ async function downloadExcel(unitKode, unitNama){
     lab.fill = {type:'pattern',pattern:'solid',fgColor:{argb:C.labBg}};
     lab.alignment = {horizontal:'left', vertical:'middle'};
     let col = 2;
-    MET.forEach(m=>{
+    METRICS.forEach(([m])=>{
       ws.mergeCells(1, col, 1, col+2);
       const c = ws.getCell(1, col);
       c.value = MLBL[m];
@@ -1353,7 +1353,7 @@ async function downloadExcel(unitKode, unitNama){
 
     // header baris 2: sudut
     let c2 = 2;
-    MET.forEach(()=>{
+    METRICS.forEach(()=>{
       ANG.forEach(a=>{
         const c = ws.getCell(2, c2++);
         c.value = a;
@@ -1371,7 +1371,7 @@ async function downloadExcel(unitKode, unitNama){
       pc.fill = {type:'pattern',pattern:'solid',fgColor:{argb:C.partBg}};
       pc.alignment = {horizontal:'left'};
       let cc = 2;
-      MET.forEach(m=>{
+      METRICS.forEach(([m])=>{
         for(let a=0;a<3;a++){
           const b = boundsOf(r.kode, m, a);
           const rowData = r.rows[p] && r.rows[p][m];
@@ -1395,7 +1395,7 @@ async function downloadExcel(unitKode, unitNama){
       pc.fill = {type:'gradient', gradient:'angle', degree:0,
         stops:[{position:0,color:{argb:C.tgt1}},{position:1,color:{argb:C.tgt2}}]};
       let cc = 2;
-      MET.forEach(m=>{
+      METRICS.forEach(([m])=>{
         if(m==='dE'){
           const c = row.getCell(cc);
           c.value = dEVal; c.font={bold:true,color:{argb:C.tgtFg}};
@@ -1434,7 +1434,7 @@ async function downloadExcel(unitKode, unitNama){
     for(let i=2;i<=13;i++) ws.getColumn(i).width = 9;
 
     // ---- GRAFIK di bawah tabel (SVG → PNG → insert) ----
-    const svgStrs = MET.map(m=>chartSVG(r, m));
+    const svgStrs = METRICS.map(([m])=>chartSVG(r, m));
     const pngBufs = [];
     for(const svg of svgStrs){
       try{
@@ -1529,7 +1529,7 @@ async function downloadPDF(unitKode, unitNama){
       pdf.text('Over All OK', 14, 30);
     }
     // Grafik 4 buah (2x2)
-    const svgStrs = MET.map(m=>chartSVG(r, m));
+    const svgStrs = METRICS.map(([m])=>chartSVG(r, m));
     for(let mi=0; mi<svgStrs.length; mi++){
       const pngData = await new Promise((res)=>{
         const cv = document.createElement('canvas');
@@ -1559,7 +1559,7 @@ async function downloadPDF(unitKode, unitNama){
     pdf.setFont('helvetica','bold');
     pdf.text('ARIA CHECK', 14, tableY);
     let colX = 50;
-    MET.forEach(([m,l])=>{
+    METRICS.forEach(([m,l])=>{
       pdf.text(l, colX, tableY);
       colX += 55;
     });
@@ -1571,7 +1571,7 @@ async function downloadPDF(unitKode, unitNama){
       pdf.text(part.toUpperCase(), 14, tableY);
       colX = 50;
       pdf.setFont('helvetica','normal');
-      MET.forEach(([m])=>{
+      METRICS.forEach(([m])=>{
         for(let a=0;a<3;a++){
           const b = boundsOf(r.kode, m, a);
           const val = v[m][a];
@@ -1591,7 +1591,7 @@ async function downloadPDF(unitKode, unitNama){
     pdf.setTextColor(13,71,161);
     pdf.text('Target Max Upper (+)', 14, tableY);
     colX = 50;
-    MET.forEach(([m])=>{
+    METRICS.forEach(([m])=>{
       if(m==='dE'){ pdf.text(String(DE_MAX), colX, tableY); colX += 55+4; return; }
       const b = boundsOf(r.kode, m, 0);
       for(let a=0;a<3;a++){ pdf.text(String(b?b[1]:''), colX, tableY); colX += 18; }
@@ -1600,7 +1600,7 @@ async function downloadPDF(unitKode, unitNama){
     tableY += 5;
     pdf.text('Target Max Lower (-)', 14, tableY);
     colX = 50;
-    MET.forEach(([m])=>{
+    METRICS.forEach(([m])=>{
       if(m==='dE'){ pdf.text('-', colX, tableY); colX += 55+4; return; }
       const b = boundsOf(r.kode, m, 0);
       for(let a=0;a<3;a++){ pdf.text(String(b?b[0]:''), colX, tableY); colX += 18; }
