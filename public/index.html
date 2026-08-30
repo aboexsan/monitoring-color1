@@ -1546,16 +1546,16 @@ async function downloadPDF(unitKode, unitNama){
       const imgData = canvas.toDataURL('image/png');
       const imgW = pageW - 24;
       const imgH = (canvas.height / canvas.width) * imgW;
-      // batasi tinggi max 80mm
-      const finalH = Math.min(imgH, 80);
-      pdf.addImage(imgData, 'PNG', 12, 32, imgW, finalH);
+      const finalH = Math.min(imgH, 62);   // max 62mm
+      pdf.addImage(imgData, 'PNG', 12, 30, imgW, finalH);
     }
 
-    // --- GRAFIK 4 buah (SVG → PNG) ---
+    // --- GRAFIK 4 buah (SVG → PNG) di bawah tabel ---
     const svgStrs = METRICS.map(([m])=>chartSVG(r, m));
-    const chartY = 118;
-    const chartW = 135, chartH = 62;
-    const positions = [[12, chartY], [150, chartY], [12, chartY+chartH+8], [150, chartY+chartH+8]];
+    const chartY = 96;         // mulai dari 96mm (setelah tabel max 62 + header 30 = 92)
+    const chartW = 138, chartH = 50;
+    const positions = [[12, chartY], [150, chartY], [12, chartY+chartH+5], [150, chartY+chartH+5]];
+    // max bottom = 96 + 50 + 5 + 50 = 201mm < 210mm A4 landscape ✓
 
     for(let mi=0; mi<svgStrs.length; mi++){
       const pngDataUrl = await new Promise((res)=>{
