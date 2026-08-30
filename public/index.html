@@ -1489,6 +1489,7 @@ async function downloadExcel(unitKode, unitNama){
 }
 
 async function downloadPDF(unitKode, unitNama){
+  // load jsPDF
   if(!window.jspdf){
     await new Promise((resolve)=>{
       const s = document.createElement('script');
@@ -1498,38 +1499,64 @@ async function downloadPDF(unitKode, unitNama){
     });
   }
   if(!window.jspdf){ toast('Gagal memuat modul PDF — cek koneksi internet', false); return; }
+
   const ids = [...document.querySelectorAll('#riwayatList .uk-chk:checked')].map(c=>c.dataset.id);
   const unitId = DB.units.find(x=>x.kode===unitKode)?.id;
   let list = DB.measurements.filter(r=>r.unitId===unitId);
   if(ids.length) list = list.filter(r=>ids.includes(r.id));
   if(!list.length){ toast('Centang dulu data yang mau di-download', false); return; }
+
   const { jsPDF } = window.jspdf;
   const pdf = new jsPDF({orientation:'landscape', unit:'mm', format:'a4'});
   const pageW = 297, pageH = 210;
   let firstPage = true;
+
   for(let ri=0; ri<list.length; ri++){
     const r = list[ri];
     if(!firstPage) pdf.addPage();
+
+    // --- HEADER INFO ---
     pdf.setFont('helvetica','bold'); pdf.setFontSize(14);
     pdf.setTextColor(13,59,102);
-    pdf.text('Daily Monitoring Color', 14, 14);
+    pdf.text('Daily Monitoring Color', 14, 12);
     pdf.setFontSize(11);
-    pdf.text(unitKode + ' \u2014 ' + unitNama, 14, 20);
+    pdf.text(unitKode + ' \u2014 ' + unitNama, 14, 18);
     pdf.setFont('helvetica','normal'); pdf.setFontSize(9);
     pdf.setTextColor(90,101,112);
-    pdf.text('Tanggal: ' + fmtTgl(r.tanggal) + '  |  Shift: ' + r.shift + '  |  No.Body: ' + (r.noBody||'-') + '  |  Warna: ' + r.kode, 14, 25);
+    pdf.text('Tanggal: ' + fmtTgl(r.tanggal) + '  |  Shift: ' + r.shift + '  |  No.Body: ' + (r.noBody||'-') + '  |  Warna: ' + r.kode, 14, 23);
     const ngs = hitungNG(r);
     if(ngs.length){
-      pdf.setTextColor(193,18,31);
-      pdf.setFont('helvetica','bold');
-      pdf.text('NG: ' + ngs.map(n=>n.label).join(' | '), 14, 30);
+      pdf.setTextColor(193,18,31); pdf.setFont('helvetica','bold'); pdf.setFontSize(9);
+      pdf.text('NG: ' + ngs.map(n=>n.label).join('  |  '), 14, 28);
     } else {
-      pdf.setTextColor(22,163,52);
-      pdf.setFont('helvetica','bold');
-      pdf.text('Over All OK', 14, 30);
+      pdf.setTextColor(22,163,52); pdf.setFont('helvetica','bold'); pdf.setFontSize(9);
+      pdf.text('Over All OK', 14, 28);
     }
-    // Grafik 4 buah (2x2)
+
+    // --- TABEL: capture dari DOM pakai html2canvas (persis tampilan web) ---
+    const detailsEl = document.querySelector('#riwayatList details.ukur[open]') 
+                   || document.querySelector('details.ukur[open]');
+    const tableEl = detailsEl ? detailsEl.querySelector('.ukt') : null;
+    
+    if(tableEl){
+      const canvas = await html2canvas(tableEl, {
+        scale: 2, backgroundColor: '#ffffff',
+        useCORS: true, logging: false
+      });
+      const imgData = canvas.toDataURL('image/png');
+      const imgW = pageW - 24;
+      const imgH = (canvas.height / canvas.width) * imgW;
+      // batasi tinggi max 80mm
+      const finalH = Math.min(imgH, 80);
+      pdf.addImage(imgData, 'PNG', 12, 32, imgW, finalH);
+    }
+
+    // --- GRAFIK 4 buah (SVG → PNG) ---
     const svgStrs = METRICS.map(([m])=>chartSVG(r, m));
+    const chartY = 118;
+    const chartW = 135, chartH = 62;
+    const positions = [[12, chartY], [150, chartY], [12, chartY+chartH+8], [150, chartY+chartH+8]];
+
     for(let mi=0; mi<svgStrs.length; mi++){
       const pngDataUrl = await new Promise((res)=>{
         const cv = document.createElement('canvas');
@@ -1546,71 +1573,19 @@ async function downloadPDF(unitKode, unitNama){
         img.src = src;
       });
       if(pngDataUrl){
-        const col = mi % 2 === 0 ? 14 : 150;
-        const rowY = 38 + Math.floor(mi/2) * 52;
-        pdf.addImage(pngDataUrl, 'PNG', col, rowY, 130, 48);
+        const [px, py] = positions[mi];
+        pdf.addImage(pngDataUrl, 'PNG', px, py, chartW, chartH);
       }
     }
-    // tabel teks di bawah grafik
-    let tableY = 150;
-    pdf.setFontSize(9);
-    pdf.setTextColor(31,42,32);
-    pdf.setFont('helvetica','bold');
-    pdf.text('ARIA CHECK', 14, tableY);
-    let colX = 50;
-    METRICS.forEach(([m,l])=>{
-      pdf.text(l, colX, tableY);
-      colX += 55;
-    });
-    tableY += 5;
-    pdf.setFont('helvetica','normal');
-    pdf.setFontSize(8);
-    Object.entries(r.rows).forEach(([part,v])=>{
-      pdf.setFont('helvetica','bold');
-      pdf.text(part.toUpperCase(), 14, tableY);
-      colX = 50;
-      pdf.setFont('helvetica','normal');
-      METRICS.forEach(([m])=>{
-        for(let a=0;a<3;a++){
-          const b = boundsOf(r.kode, m, a);
-          const val = v[m][a];
-          const isNG = b && !isNaN(val) && (val<b[0]||val>b[1]);
-          if(isNG){ pdf.setTextColor(193,18,31); pdf.setFont('helvetica','bold'); }
-          else { pdf.setTextColor(30,107,36); }
-          pdf.text(String(val), colX, tableY);
-          colX += 18;
-        }
-        colX += 4;
-      });
-      tableY += 5;
-      pdf.setTextColor(31,42,32);
-    });
-    // target rows
-    pdf.setFont('helvetica','bold');
-    pdf.setTextColor(13,71,161);
-    pdf.text('Target Max Upper (+)', 14, tableY);
-    colX = 50;
-    METRICS.forEach(([m])=>{
-      if(m==='dE'){ pdf.text(String(DE_MAX), colX, tableY); colX += 55+4; return; }
-      const b = boundsOf(r.kode, m, 0);
-      for(let a=0;a<3;a++){ pdf.text(String(b?b[1]:''), colX, tableY); colX += 18; }
-      colX += 4;
-    });
-    tableY += 5;
-    pdf.text('Target Max Lower (-)', 14, tableY);
-    colX = 50;
-    METRICS.forEach(([m])=>{
-      if(m==='dE'){ pdf.text('-', colX, tableY); colX += 55+4; return; }
-      const b = boundsOf(r.kode, m, 0);
-      for(let a=0;a<3;a++){ pdf.text(String(b?b[0]:''), colX, tableY); colX += 18; }
-    });
-    // Footer
-    pdf.setFontSize(8);
+
+    // --- FOOTER ---
+    pdf.setFontSize(7.5);
     pdf.setTextColor(140,150,160);
-    pdf.text('Monitoring Color \u2014 PT Astra Daihatsu Motor \u2022 Quality Engineering \u2022 KAP', pageW/2, pageH-6, {align:'center'});
+    pdf.text('Monitoring Color \u2014 PT Astra Daihatsu Motor \u2022 Quality Engineering \u2022 KAP', pageW/2, pageH-5, {align:'center'});
     pdf.setTextColor(0,0,0);
     firstPage = false;
   }
+
   pdf.save('Monitoring-' + unitKode + '-' + new Date().toISOString().slice(0,10) + '.pdf');
   toast('PDF ter-download \u2713 (' + list.length + ' data)');
 }
