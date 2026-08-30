@@ -1531,7 +1531,7 @@ async function downloadPDF(unitKode, unitNama){
     // Grafik 4 buah (2x2)
     const svgStrs = METRICS.map(([m])=>chartSVG(r, m));
     for(let mi=0; mi<svgStrs.length; mi++){
-      const pngData = await new Promise((res)=>{
+      const pngDataUrl = await new Promise((res)=>{
         const cv = document.createElement('canvas');
         cv.width = 1360; cv.height = 624;
         const ctx = cv.getContext('2d');
@@ -1540,16 +1540,15 @@ async function downloadPDF(unitKode, unitNama){
         img.onload = ()=>{
           ctx.fillStyle='#fff'; ctx.fillRect(0,0,1360,624);
           ctx.drawImage(img,0,0,1360,624);
-          cv.toBlob(b=>res(b), 'image/png');
+          res(cv.toDataURL('image/png'));
         };
         img.onerror = ()=>res(null);
         img.src = src;
       });
-      if(pngData){
-        const ab = await pngData.arrayBuffer();
+      if(pngDataUrl){
         const col = mi % 2 === 0 ? 14 : 150;
         const rowY = 38 + Math.floor(mi/2) * 52;
-        pdf.addImage(ab, 'PNG', col, rowY, 130, 48);
+        pdf.addImage(pngDataUrl, 'PNG', col, rowY, 130, 48);
       }
     }
     // tabel teks di bawah grafik
